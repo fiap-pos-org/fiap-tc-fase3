@@ -1,0 +1,379 @@
+{
+  "perguntas": 168,
+  "hit@1": 0.804,
+  "hit@3": 0.917,
+  "erros": [
+    {
+      "pergunta": "Quanto de soro fazer no paciente séptico hipotenso?",
+      "esperadas": [
+        "PROT-SEPSE-01 §4"
+      ],
+      "obtidas": [
+        "PROT-SEPSE-01 §2",
+        "PROT-SEPSE-01 §5",
+        "PROT-SEPSE-01 §4"
+      ]
+    },
+    {
+      "pergunta": "Quando indicar os 30 mL/kg na sepse?",
+      "esperadas": [
+        "PROT-SEPSE-01 §4"
+      ],
+      "obtidas": [
+        "PROT-SEPSE-01 §2",
+        "PROT-SEPSE-01 §5",
+        "PROT-IRA-01 §5"
+      ]
+    },
+    {
+      "pergunta": "Em quanto tempo o ECG precisa ser feito na suspeita de infarto?",
+      "esperadas": [
+        "PROT-DORTORAC-01 §3"
+      ],
+      "obtidas": [
+        "PROT-AVC-01 §3",
+        "PROT-AVC-01 §4",
+        "PROT-DORTORAC-01 §3"
+      ]
+    },
+    {
+      "pergunta": "Qual a meta porta-balão no infarto com supra?",
+      "esperadas": [
+        "PROT-DORTORAC-01 §4",
+        "PROT-DORTORAC-01 §5"
+      ],
+      "obtidas": [
+        "PROT-HAS-01 §6",
+        "PROT-DORTORAC-01 §4",
+        "PROT-DORTORAC-01 §5"
+      ]
+    },
+    {
+      "pergunta": "Quanto tempo temos para angioplastia primária?",
+      "esperadas": [
+        "PROT-DORTORAC-01 §4",
+        "PROT-DORTORAC-01 §5"
+      ],
+      "obtidas": [
+        "PROT-AVC-01 §4",
+        "PROT-DORTORAC-01 §4",
+        "PROT-TEV-01 §6"
+      ]
+    },
+    {
+      "pergunta": "E se a hemodinâmica não estiver disponível no IAM com supra?",
+      "esperadas": [
+        "PROT-DORTORAC-01 §4",
+        "PROT-DORTORAC-01 §5"
+      ],
+      "obtidas": [
+        "PROT-TEV-01 §5",
+        "PROT-AVC-01 §6",
+        "MOD-LAUDO-ECG-01 §5"
+      ]
+    },
+    {
+      "pergunta": "Tem alguma contraindicação de nitrato que o protocolo destaca?",
+      "esperadas": [
+        "PROT-DORTORAC-01 §6"
+      ],
+      "obtidas": [
+        "PROT-AVC-01 §6",
+        "PROT-SEPSE-01 §5",
+        "PROT-IRA-01 §6"
+      ]
+    },
+    {
+      "pergunta": "Além de SCA, o que preciso descartar na dor torácica?",
+      "esperadas": [
+        "PROT-DORTORAC-01 §6"
+      ],
+      "obtidas": [
+        "PROT-DORTORAC-01 §2",
+        "PROT-DORTORAC-01 §6",
+        "PROT-DORTORAC-01 §4"
+      ]
+    },
+    {
+      "pergunta": "Quais causas graves de dor torácica o protocolo cita?",
+      "esperadas": [
+        "PROT-DORTORAC-01 §6"
+      ],
+      "obtidas": [
+        "PROT-DORTORAC-01 §2",
+        "PROT-DORTORAC-01 §5",
+        "PROT-DORTORAC-01 §6"
+      ]
+    },
+    {
+      "pergunta": "Piora neurológica após alteplase, qual a conduta do protocolo?",
+      "esperadas": [
+        "PROT-AVC-01 §5"
+      ],
+      "obtidas": [
+        "PROT-PAC-01 §4",
+        "PROT-AVC-01 §5",
+        "PROT-IRA-01 §4"
+      ]
+    },
+    {
+      "pergunta": "Quando suspender a infusão do trombolítico?",
+      "esperadas": [
+        "PROT-AVC-01 §5"
+      ],
+      "obtidas": [
+        "PROT-TEV-01 §6",
+        "PROT-AVC-01 §4",
+        "PROT-AVC-01 §6"
+      ]
+    },
+    {
+      "pergunta": "Qual escore o hospital usa na PAC?",
+      "esperadas": [
+        "PROT-PAC-01 §4"
+      ],
+      "obtidas": [
+        "PROT-SEPSE-01 §5",
+        "PROT-TEV-01 §2",
+        "PROT-PAC-01 §4"
+      ]
+    },
+    {
+      "pergunta": "Como interpretar o CURB-65?",
+      "esperadas": [
+        "PROT-PAC-01 §4"
+      ],
+      "obtidas": [
+        "PROT-PAC-01 §5",
+        "PROT-PAC-01 §4",
+        "PROT-VCRIT-01 §4"
+      ]
+    },
+    {
+      "pergunta": "Quais interações o protocolo de PAC destaca?",
+      "esperadas": [
+        "PROT-PAC-01 §6"
+      ],
+      "obtidas": [
+        "PROT-SEPSE-01 §5",
+        "PROT-SEGMED-01 §6",
+        "MOD-POP-SBAR-01 §3"
+      ]
+    },
+    {
+      "pergunta": "Como fecho diagnóstico de CAD?",
+      "esperadas": [
+        "PROT-CAD-01 §2"
+      ],
+      "obtidas": [
+        "PROT-AVC-01 §2",
+        "MOD-LAUDO-ECG-01 §5",
+        "MOD-LAUDO-RXTORAX-01 §5"
+      ]
+    },
+    {
+      "pergunta": "Qual pH define cetoacidose no protocolo?",
+      "esperadas": [
+        "PROT-CAD-01 §2"
+      ],
+      "obtidas": [
+        "PROT-CAD-01 §5",
+        "PROT-CAD-01 §2",
+        "PROT-CAD-01 §6"
+      ]
+    },
+    {
+      "pergunta": "Quando associar soro glicosado na CAD?",
+      "esperadas": [
+        "PROT-CAD-01 §4"
+      ],
+      "obtidas": [
+        "MOD-LAUDO-ECG-01 §5",
+        "PROT-CAD-01 §5",
+        "PROT-VCRIT-01 §2"
+      ]
+    },
+    {
+      "pergunta": "A glicemia chegou a 230 na cetoacidose, e agora?",
+      "esperadas": [
+        "PROT-CAD-01 §4"
+      ],
+      "obtidas": [
+        "PROT-CAD-01 §5",
+        "PROT-CAD-01 §6",
+        "PROT-CAD-01 §2"
+      ]
+    },
+    {
+      "pergunta": "Em que glicemia entro com glicose na CAD?",
+      "esperadas": [
+        "PROT-CAD-01 §4"
+      ],
+      "obtidas": [
+        "PROT-HIPOGLI-01 §2",
+        "PROT-CAD-01 §6",
+        "PROT-HIPOGLI-01 §4"
+      ]
+    },
+    {
+      "pergunta": "Quando considero a CAD resolvida?",
+      "esperadas": [
+        "PROT-CAD-01 §6"
+      ],
+      "obtidas": [
+        "PROT-AVC-01 §4",
+        "PROT-IRA-01 §2",
+        "PROT-PAC-01 §4"
+      ]
+    },
+    {
+      "pergunta": "Qual a velocidade máxima de queda da glicemia na CAD?",
+      "esperadas": [
+        "PROT-CAD-01 §5"
+      ],
+      "obtidas": [
+        "PROT-HIPOGLI-01 §4",
+        "PROT-CAD-01 §5",
+        "PROT-CAD-01 §6"
+      ]
+    },
+    {
+      "pergunta": "Por que não baixar a glicose rápido demais na cetoacidose?",
+      "esperadas": [
+        "PROT-CAD-01 §5"
+      ],
+      "obtidas": [
+        "PROT-CAD-01 §6",
+        "PROT-CAD-01 §5",
+        "PROT-CAD-01 §4"
+      ]
+    },
+    {
+      "pergunta": "Quando comunicar queda rápida de glicemia na CAD?",
+      "esperadas": [
+        "PROT-CAD-01 §5"
+      ],
+      "obtidas": [
+        "PROT-HIPOGLI-01 §5",
+        "PROT-CAD-01 §5",
+        "PROT-HIPOGLI-01 §4"
+      ]
+    },
+    {
+      "pergunta": "Urgência hipertensiva precisa de medicação venosa?",
+      "esperadas": [
+        "PROT-HAS-01 §4"
+      ],
+      "obtidas": [
+        "PROT-HAS-01 §2",
+        "PROT-HAS-01 §6",
+        "PROT-HAS-01 §4"
+      ]
+    },
+    {
+      "pergunta": "Paciente renal crônico pode usar enoxaparina profilática?",
+      "esperadas": [
+        "PROT-TEV-01 §4"
+      ],
+      "obtidas": [
+        "PROT-IRA-01 §4",
+        "PROT-IRA-01 §6",
+        "PROT-TEV-01 §3"
+      ]
+    },
+    {
+      "pergunta": "Quando suspender a heparina profilática antes de cirurgia?",
+      "esperadas": [
+        "PROT-TEV-01 §6"
+      ],
+      "obtidas": [
+        "PROT-TEV-01 §3",
+        "PROT-TEV-01 §4",
+        "PROT-TEV-01 §5"
+      ]
+    },
+    {
+      "pergunta": "Glicemia 62 e paciente acordado, o que fazer?",
+      "esperadas": [
+        "PROT-HIPOGLI-01 §4"
+      ],
+      "obtidas": [
+        "PROT-HIPOGLI-01 §5",
+        "PROT-HIPOGLI-01 §4",
+        "PROT-CAD-01 §5"
+      ]
+    },
+    {
+      "pergunta": "Hemoglobina de 6,8 precisa ser comunicada?",
+      "esperadas": [
+        "PROT-VCRIT-01 §2"
+      ],
+      "obtidas": [
+        "PROT-HIPOGLI-01 §5",
+        "PROT-TEV-01 §5",
+        "PROT-CAD-01 §5"
+      ]
+    },
+    {
+      "pergunta": "Qual a escala de comunicação de valor crítico?",
+      "esperadas": [
+        "PROT-VCRIT-01 §5"
+      ],
+      "obtidas": [
+        "PROT-VCRIT-01 §4",
+        "PROT-VCRIT-01 §5",
+        "PROT-VCRIT-01 §6"
+      ]
+    },
+    {
+      "pergunta": "Como definir LRA pelo protocolo?",
+      "esperadas": [
+        "PROT-IRA-01 §2"
+      ],
+      "obtidas": [
+        "PROT-SEPSE-01 §5",
+        "PROT-IRA-01 §2",
+        "MOD-POP-SBAR-01 §5"
+      ]
+    },
+    {
+      "pergunta": "Como fazer uma passagem de plantão SBAR?",
+      "esperadas": [
+        "MOD-POP-SBAR-01 §2",
+        "MOD-POP-SBAR-01 §3",
+        "MOD-POP-SBAR-01 §4",
+        "MOD-POP-SBAR-01 §5"
+      ],
+      "obtidas": [
+        "MOD-POP-SBAR-01 §6",
+        "MOD-POP-SBAR-01 §5",
+        "MOD-POP-SBAR-01 §2"
+      ]
+    },
+    {
+      "pergunta": "Qual o roteiro de comunicação com o médico?",
+      "esperadas": [
+        "MOD-POP-SBAR-01 §2",
+        "MOD-POP-SBAR-01 §3",
+        "MOD-POP-SBAR-01 §4",
+        "MOD-POP-SBAR-01 §5"
+      ],
+      "obtidas": [
+        "MOD-LAUDO-RXTORAX-01 §5",
+        "PROT-VCRIT-01 §5",
+        "MOD-RECEITA-01 §3"
+      ]
+    },
+    {
+      "pergunta": "Exames pendentes na alta, onde registro?",
+      "esperadas": [
+        "MOD-SUMARIO-ALTA-01 §5"
+      ],
+      "obtidas": [
+        "MOD-RECEITA-01 §6",
+        "MOD-RECEITA-01 §5",
+        "MOD-SUMARIO-ALTA-01 §5"
+      ]
+    }
+  ]
+}
