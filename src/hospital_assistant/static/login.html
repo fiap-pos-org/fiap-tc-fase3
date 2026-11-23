@@ -6,7 +6,7 @@
   <title>Entrar | Hospital Santa Aurora</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.7.3/dist/css/tabler.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.50.0/dist/tabler-icons.min.css">
-  <link rel="stylesheet" href="/static/app.css">
+  <link rel="stylesheet" href="/static/app.css?v=4">
   <script>
     (function () {
       var tema = null;
@@ -66,7 +66,8 @@
           senha: document.getElementById("senha").value,
         }),
       });
-      if (resp.ok) { location.href = "/"; return; }
+      // Endereço novo a cada login: o navegador nunca reaproveita uma página antiga do cache.
+      if (resp.ok) { location.replace("/?entrou=" + Date.now()); return; }
       var dados = await resp.json().catch(function () { return {}; });
       erro.textContent = typeof dados.detail === "string" ? dados.detail : "Não foi possível entrar.";
       erro.classList.remove("d-none");

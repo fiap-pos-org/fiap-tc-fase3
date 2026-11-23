@@ -103,6 +103,16 @@ def test_login_protege_a_api_e_a_pagina(cliente_com_login):
 def test_raiz_nao_vai_para_o_cache(cliente_com_login):
     """Sem isso o navegador reabre o sistema do cache sem sessão e entra em loop de recarga."""
     assert cliente_com_login.get("/").headers["cache-control"] == "no-store"
+    assert cliente_com_login.get("/static/app.js").headers["cache-control"] == "no-cache"
+
+
+def test_sair_encerra_a_sessao(cliente_com_login):
+    c = cliente_com_login
+    c.post("/api/login", json={"usuario": "medico", "senha": "s3nha-forte"})
+    assert c.get("/api/pacientes").status_code == 200
+    c.post("/api/logout")
+    assert c.get("/api/pacientes").status_code == 401
+    assert "Acesso restrito" in c.get("/").text
 
 
 def test_cookie_adulterado_nao_autentica(cliente_com_login):

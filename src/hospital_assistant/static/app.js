@@ -362,7 +362,10 @@ async function iniciar() {
   renderListaPacientes();
   renderIndicadores();
   $("tema").addEventListener("click", alternarTema);
-  $("sair").addEventListener("click", async () => { await api("/api/logout", { method: "POST" }); location.href = "/"; });
+  $("sair").addEventListener("click", async () => {
+    await fetch("/api/logout", { method: "POST" });
+    location.replace("/static/login.html");
+  });
   $("duvida-paciente").addEventListener("change", selecionarPacienteDuvida);
   $("duvida-form").addEventListener("submit", enviarPergunta);
   $("duvida-limpar").addEventListener("click", () => limpar($("chat")));

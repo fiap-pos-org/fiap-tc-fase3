@@ -298,6 +298,14 @@ def criar_app(
             raise HTTPException(404, "Execução não encontrada")
         return [{**e, "nome": ETAPAS.get(e["etapa"], e["etapa"])} for e in eventos]
 
+    @app.middleware("http")
+    async def revalidar_estaticos(request: Request, call_next):
+        # Arquivos do front sempre revalidados: depois de um deploy o navegador pega a versão nova.
+        resposta = await call_next(request)
+        if request.url.path.startswith("/static/"):
+            resposta.headers["Cache-Control"] = "no-cache"
+        return resposta
+
     app.mount("/static", StaticFiles(directory=ESTATICOS), name="static")
 
     @app.get("/", include_in_schema=False)
