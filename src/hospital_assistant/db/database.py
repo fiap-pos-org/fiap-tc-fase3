@@ -2,7 +2,7 @@
 
 O modelo nunca escreve SQL nem grava no banco: as consultas são funções parametrizadas
 chamadas pelo fluxo. As únicas escritas são do próprio sistema: alertas de valores críticos,
-condutas com a decisão do médico e a chegada de resultados de exames (simulação do laboratório).
+condutas com a decisão do médico, a trilha de auditoria e a chegada de resultados de exames (simulação do laboratório).
 """
 
 import json
@@ -64,6 +64,17 @@ CREATE TABLE IF NOT EXISTS condutas (
     comentario TEXT,
     registrado_em TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS auditoria (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    trace_id TEXT NOT NULL,
+    fluxo TEXT NOT NULL,
+    etapa TEXT NOT NULL,
+    paciente_id TEXT,
+    dados TEXT NOT NULL,
+    duracao_ms INTEGER NOT NULL,
+    criado_em TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_auditoria_trace ON auditoria(trace_id);
 """
 
 

@@ -20,6 +20,7 @@ from langgraph.types import interrupt
 from hospital_assistant.assistant.ferramentas import criar_ferramentas
 from hospital_assistant.assistant.qa import Contexto
 from hospital_assistant.db.database import registrar_alerta, registrar_conduta
+from hospital_assistant.observability.auditoria import auditado
 from hospital_assistant.safety.guardrails import fontes_citadas, validar_resposta
 
 PERGUNTA_TRIAGEM = "Qual a conduta inicial prevista para este caso?"
@@ -33,10 +34,12 @@ class EstadoTriagem(TypedDict, total=False):
     criticos: list[dict]
     alertas: list[str]
     trechos: list[tuple[str, str]]
+    entrada_modelo: str
     sugestao: str
     validacao: dict
     decisao: dict
     status: str
+    medico: str | None
 
 
 def criar_fluxo_triagem(
@@ -73,15 +76,20 @@ def criar_fluxo_triagem(
         return {"alertas": alertas}
 
     def buscar_protocolos(estado: EstadoTriagem) -> dict:
-        consulta = f"{PERGUNTA_TRIAGEM} {estado['paciente']['diagnostico']}"
-        return {"trechos": ferramentas["buscar_protocolos"].invoke({"consulta": consulta, "k": 3})}
+        # O protocolo do caso vem do prontuário (não é adivinhado pela busca): a seção de
+        # conduta dele vai sempre, e a busca semântica completa com 2 trechos relacionados.
+        paciente = estado["paciente"]
+        do_caso = ferramentas["ler_secao"].invoke({"referencia": f"{paciente['protocolo']} §4"})
+        consulta = f"{PERGUNTA_TRIAGEM} {paciente['diagnostico']}"
+        busca = ferramentas["buscar_protocolos"].invoke({"consulta": consulta, "k": 3})
+        return {"trechos": [do_caso] + [t for t in busca if t[0] != do_caso[0]][:2]}
 
     def gerar_sugestao(estado: EstadoTriagem) -> dict:
-        contexto = Contexto(PERGUNTA_TRIAGEM, estado["paciente"], estado["trechos"])
-        return {"sugestao": cadeia.invoke({"entrada": contexto.entrada()})}
+        entrada = Contexto(PERGUNTA_TRIAGEM, estado["paciente"], estado["trechos"]).entrada()
+        return {"entrada_modelo": entrada, "sugestao": cadeia.invoke({"entrada": entrada})}
 
     def validar_seguranca(estado: EstadoTriagem) -> dict:
-        validacao = validar_resposta(estado["sugestao"], estado["paciente"])
+        validacao = validar_resposta(estado["sugestao"], estado["paciente"], estado["trechos"])
         return {"validacao": {"aprovada": validacao.aprovada, "motivos": validacao.motivos}}
 
     def aprovacao_humana(estado: EstadoTriagem) -> dict:
@@ -117,7 +125,7 @@ def criar_fluxo_triagem(
             medico,
             comentario,
         )
-        return {"status": status}
+        return {"status": status, "medico": medico}
 
     grafo = StateGraph(EstadoTriagem)
     for nome, no in [
@@ -131,7 +139,7 @@ def criar_fluxo_triagem(
         ("aprovacao_humana", aprovacao_humana),
         ("registrar_conduta", registrar),
     ]:
-        grafo.add_node(nome, no)
+        grafo.add_node(nome, auditado(conn, "triagem", nome, no))
 
     grafo.add_edge(START, "carregar_prontuario")
     grafo.add_conditional_edges(

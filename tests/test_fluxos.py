@@ -22,7 +22,7 @@ from hospital_assistant.graph.triagem import criar_fluxo_triagem
 from hospital_assistant.rag.indice import criar_indice
 from hospital_assistant.safety.guardrails import validar_resposta
 
-SUGESTAO_OK = "Seguir o protocolo.\n\nFontes: [PRONTUÁRIO: diagnóstico]; [PROT-CAD-01 §4]"
+SUGESTAO_OK = "Seguir o protocolo do caso.\n\nFontes: [PRONTUÁRIO: diagnóstico]"
 SUGESTAO_FONTE_FALSA = "Seguir o protocolo.\n\nFontes: [PROT-INVENTADO-02 §3]"
 
 
@@ -134,3 +134,29 @@ def test_guardrails():
     assert not validar_resposta("Usar amoxicilina.\n\nFontes: [PROT-PAC-01 §4]", alergico).aprovada
     conflito = "Há conflito com a alergia a amoxicilina.\n\nFontes: [PRONTUÁRIO: alergias]"
     assert validar_resposta(conflito, alergico).aprovada
+
+
+def test_fundamentacao_fonte_precisa_estar_nos_trechos():
+    trechos = [("PROT-SEPSE-01 §4", "..."), ("PROT-PAC-01 §4", "...")]
+    ok = "Antibiótico em 1 hora.\n\nFontes: [PROT-SEPSE-01 §4]"
+    assert validar_resposta(ok, trechos=trechos).aprovada
+    # mesmo documento, outra seção: fundamentado no documento recuperado
+    assert validar_resposta("X.\n\nFontes: [PROT-SEPSE-01 §5]", trechos=trechos).aprovada
+    # documento que não foi entregue ao modelo (caso real: pergunta sobre queimados)
+    inventada = "O PROT-SEGMED-01 trata de queimados.\n\nFontes: [PROT-SEGMED-01 §5]"
+    assert not validar_resposta(inventada, trechos=trechos).aprovada
+    # política institucional vale em recusa ou com paciente
+    recusa = "Não encontrei nos protocolos.\n\nFontes: [PROT-SEGMED-01 §4]"
+    assert validar_resposta(recusa, trechos=trechos).aprovada
+    critico = "Potássio crítico.\n\nFontes: [PRONTUÁRIO: exames]; [PROT-VCRIT-01 §2]"
+    assert validar_resposta(critico, {"alergias": []}, trechos).aprovada
+
+
+def test_triagem_entrega_a_conduta_do_protocolo_do_paciente(conn, indice):
+    """O protocolo do caso vem do prontuário, não da busca (a busca podia trazer outro)."""
+    fluxo = _fluxo(conn, indice, SUGESTAO_OK)
+    cfg = {"configurable": {"thread_id": "t7"}}
+    estado = fluxo.invoke({"paciente_id": "PAC-0010", "trace_id": "t7"}, cfg)
+    protocolo = buscar_paciente(conn, "PAC-0010")["protocolo"]
+    assert estado["trechos"][0][0] == f"{protocolo} §4"
+    assert len(estado["trechos"]) == 3

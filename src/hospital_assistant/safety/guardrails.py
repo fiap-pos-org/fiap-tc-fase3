@@ -14,6 +14,12 @@ _PRESCRICAO = re.compile(
 )
 
 
+# Documentos de política institucional: valem para qualquer caso, então podem ser citados sem
+# estar entre os trechos recuperados, mas só em perguntas sobre paciente ou em recusas.
+POLITICAS = {"PROT-SEGMED-01", "PROT-VCRIT-01", "MOD-POP-SBAR-01"}
+_RECUSA = re.compile(r"não posso|não encontrei|fora do escopo|conflito", re.IGNORECASE)
+
+
 @cache
 def referencias_validas() -> frozenset[str]:
     return frozenset(f"{d.id} §{s.numero}" for d in load_documents() for s in d.secoes)
@@ -35,14 +41,27 @@ class Validacao:
         self.motivos.append(motivo)
 
 
-def validar_resposta(resposta: str, paciente: dict | None = None) -> Validacao:
+def validar_resposta(
+    resposta: str, paciente: dict | None = None, trechos: list[tuple[str, str]] | None = None
+) -> Validacao:
+    """Com `trechos`, também confere a fundamentação: o documento citado precisa estar entre
+    os trechos entregues ao modelo (o modelo não pode citar o que não leu)."""
     validacao = Validacao()
     citadas = fontes_citadas(resposta)
     if not citadas:
         validacao.reprovar("resposta sem fonte citada")
+    documentos = {ref.split(" §")[0] for ref, _ in trechos or []}
+    politica_permitida = paciente is not None or bool(_RECUSA.search(resposta))
     for ref in citadas:
-        if not ref.startswith("PRONTUÁRIO") and ref not in referencias_validas():
+        if ref.startswith("PRONTUÁRIO"):
+            continue
+        if ref not in referencias_validas():
             validacao.reprovar(f"fonte inexistente citada: {ref}")
+            continue
+        documento = ref.split(" §")[0]
+        fundamentada = documento in documentos or (documento in POLITICAS and politica_permitida)
+        if trechos is not None and not fundamentada:
+            validacao.reprovar(f"fonte citada fora dos trechos consultados: {ref}")
 
     texto = resposta.lower()
     for alergia in (paciente or {}).get("alergias", []):

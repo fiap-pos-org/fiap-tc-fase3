@@ -10,10 +10,15 @@ import sqlite3
 from langchain_core.tools import BaseTool, tool
 from langchain_core.vectorstores import InMemoryVectorStore
 
+from hospital_assistant.data.documents import load_documents
 from hospital_assistant.data.exames import EXAMES_LAB
 from hospital_assistant.db.database import buscar_paciente
 from hospital_assistant.prompts import fmt_limite_critico, fmt_num
 from hospital_assistant.rag.indice import buscar
+
+SECOES = {
+    f"{d.id} §{s.numero}": f"{s.titulo}: {s.texto}" for d in load_documents() for s in d.secoes
+}
 
 
 def criar_ferramentas(conn: sqlite3.Connection, indice: InMemoryVectorStore) -> dict[str, BaseTool]:
@@ -47,8 +52,14 @@ def criar_ferramentas(conn: sqlite3.Connection, indice: InMemoryVectorStore) -> 
         """Busca semântica nos protocolos e modelos internos; retorna (referência, trecho)."""
         return buscar(indice, consulta, k=k)
 
+    @tool
+    def ler_secao(referencia: str) -> tuple[str, str]:
+        """Lê uma seção de protocolo pela referência (ex.: 'PROT-CAD-01 §4')."""
+        return referencia, SECOES[referencia]
+
     ferramentas = [
         consultar_prontuario,
+        ler_secao,
         listar_exames_pendentes,
         verificar_valores_criticos,
         buscar_protocolos,
