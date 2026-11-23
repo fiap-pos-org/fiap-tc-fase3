@@ -17,4 +17,4 @@ COPY data ./data
 RUN uv sync --frozen --no-default-groups
 
 EXPOSE 7860
-CMD ["uv", "run", "--no-sync", "python", "-m", "hospital_assistant.app"]
+CMD ["uv", "run", "--no-sync", "python", "-m", "hospital_assistant.api"]

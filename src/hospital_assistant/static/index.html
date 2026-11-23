@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Assistente Médico | Hospital Santa Aurora</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.7.3/dist/css/tabler.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.50.0/dist/tabler-icons.min.css">
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<div class="page">
+  <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark">
+    <div class="container-fluid">
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#menu" aria-label="Abrir menu">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="navbar-brand navbar-brand-autodark marca">
+        <span class="marca-icone"><i class="ti ti-heart-plus"></i></span>
+        <span class="marca-texto">Santa Aurora<small>Assistente clínico</small></span>
+      </div>
+      <div class="collapse navbar-collapse" id="menu">
+        <ul class="navbar-nav pt-lg-3">
+          <li class="nav-item"><a class="nav-link" href="#duvida" data-rota="duvida"><span class="nav-link-icon"><i class="ti ti-message-2-question"></i></span><span class="nav-link-title">Dúvida clínica</span></a></li>
+          <li class="nav-item"><a class="nav-link" href="#triagem" data-rota="triagem"><span class="nav-link-icon"><i class="ti ti-heartbeat"></i></span><span class="nav-link-title">Triagem automática</span></a></li>
+          <li class="nav-item"><a class="nav-link" href="#pacientes" data-rota="pacientes"><span class="nav-link-icon"><i class="ti ti-users"></i></span><span class="nav-link-title">Pacientes</span></a></li>
+          <li class="nav-item"><a class="nav-link" href="#auditoria" data-rota="auditoria"><span class="nav-link-icon"><i class="ti ti-shield-check"></i></span><span class="nav-link-title">Auditoria</span></a></li>
+        </ul>
+        <div class="mt-auto p-3 d-none d-lg-block menu-rodape">
+          <div class="text-secondary small">Modelo</div>
+          <div class="fw-medium" id="modelo">-</div>
+          <div class="text-secondary small mt-2">Qwen2.5-1.5B ajustado com QLoRA</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="page-wrapper">
+    <div class="page-header d-print-none">
+      <div class="container-xl">
+        <div class="row align-items-center">
+          <div class="col">
+            <div class="page-pretitle">Hospital Santa Aurora</div>
+            <h2 class="page-title" id="titulo">Dúvida clínica</h2>
+          </div>
+          <div class="col-auto">
+            <span class="badge bg-green-lt"><i class="ti ti-lock me-1"></i>Toda sugestão exige validação médica</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="page-body">
+      <div class="container-xl">
+
+        <!-- Dúvida clínica -->
+        <section id="tela-duvida" class="tela">
+          <div class="row row-cards">
+            <div class="col-lg-8">
+              <div class="card chat-card">
+                <div class="card-header">
+                  <h3 class="card-title">Conversa</h3>
+                  <div class="card-actions d-flex gap-2 align-items-center">
+                    <select class="form-select form-select-sm seletor-paciente" id="duvida-paciente"></select>
+                    <button class="btn btn-sm btn-ghost-secondary" id="duvida-limpar" title="Limpar conversa"><i class="ti ti-trash"></i></button>
+                  </div>
+                </div>
+                <div class="card-body chat" id="chat">
+                  <div class="empty chat-vazio" id="chat-vazio">
+                    <div class="empty-icon"><i class="ti ti-stethoscope"></i></div>
+                    <p class="empty-title">Faça uma pergunta clínica</p>
+                    <p class="empty-subtitle text-secondary">As respostas usam os protocolos internos e, com um paciente selecionado, o prontuário dele. Toda resposta cita a fonte.</p>
+                  </div>
+                </div>
+                <div class="card-footer">
+                  <form id="duvida-form" class="d-flex gap-2">
+                    <input class="form-control" id="duvida-pergunta" placeholder="Digite sua pergunta" autocomplete="off" maxlength="2000">
+                    <button class="btn btn-primary" id="duvida-enviar" type="submit"><i class="ti ti-send me-1"></i>Enviar</button>
+                  </form>
+                </div>
+              </div>
+            </div>
+            <div class="col-lg-4">
+              <div class="card mb-3">
+                <div class="card-header"><h3 class="card-title">Prontuário</h3></div>
+                <div class="card-body" id="duvida-prontuario"><p class="text-secondary mb-0">Nenhum paciente selecionado: as respostas usam só os protocolos.</p></div>
+              </div>
+              <div class="card mb-3">
+                <div class="card-header"><h3 class="card-title">Perguntas de exemplo</h3></div>
+                <div class="list-group list-group-flush" id="exemplos"></div>
+              </div>
+              <div class="card">
+                <div class="card-header"><h3 class="card-title">Limites de atuação</h3></div>
+                <div class="card-body">
+                  <ul class="list-unstyled limites mb-0">
+                    <li><i class="ti ti-ban text-danger"></i>Não prescreve nem altera prescrições</li>
+                    <li><i class="ti ti-user-check text-green"></i>Toda sugestão depende de validação médica</li>
+                    <li><i class="ti ti-book text-azure"></i>Responde só com protocolos e prontuário</li>
+                    <li><i class="ti ti-quote text-azure"></i>Cita a fonte de cada resposta</li>
+                    <li><i class="ti ti-filter-off text-warning"></i>Recusa perguntas fora do escopo clínico</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Triagem -->
+        <section id="tela-triagem" class="tela d-none">
+          <div class="card mb-3">
+            <div class="card-body">
+              <div class="row g-2 align-items-end">
+                <div class="col-md">
+                  <label class="form-label">Paciente</label>
+                  <select class="form-select" id="triagem-paciente"></select>
+                </div>
+                <div class="col-md-auto">
+                  <button class="btn btn-primary w-100" id="triagem-executar"><i class="ti ti-player-play me-1"></i>Executar triagem</button>
+                </div>
+              </div>
+              <p class="text-secondary small mt-2 mb-0">Verifica pendências e valores críticos, emite alertas, consulta o protocolo do caso, gera uma sugestão e para aguardando a decisão do médico.</p>
+            </div>
+            <div class="progress progress-sm d-none" id="triagem-progresso"><div class="progress-bar progress-bar-indeterminate"></div></div>
+          </div>
+          <div class="row row-cards d-none" id="triagem-resultado">
+            <div class="col-lg-4">
+              <div class="card">
+                <div class="card-header"><h3 class="card-title">Etapas do fluxo</h3></div>
+                <div class="card-body"><ul class="etapas" id="triagem-etapas"></ul></div>
+                <div class="card-footer text-secondary small" id="triagem-trace"></div>
+              </div>
+            </div>
+            <div class="col-lg-8">
+              <div id="triagem-status" class="mb-3"></div>
+              <div id="triagem-alertas"></div>
+              <div class="card mb-3">
+                <div class="card-header"><h3 class="card-title">Exames pendentes</h3></div>
+                <div class="card-body" id="triagem-pendentes"></div>
+              </div>
+              <div class="card mb-3">
+                <div class="card-header"><h3 class="card-title">Sugestão do assistente</h3></div>
+                <div class="card-body">
+                  <div class="resposta" id="triagem-sugestao"></div>
+                  <div class="mt-3" id="triagem-fontes"></div>
+                </div>
+              </div>
+              <div class="card card-borda-primaria d-none" id="triagem-decisao">
+                <div class="card-header"><h3 class="card-title">Decisão do médico</h3></div>
+                <div class="card-body">
+                  <div class="row g-2">
+                    <div class="col-md-6"><label class="form-label required">Médico responsável (nome e CRM)</label><input class="form-control" id="decisao-medico" maxlength="200"></div>
+                    <div class="col-md-6"><label class="form-label">Comentário</label><input class="form-control" id="decisao-comentario" maxlength="1000"></div>
+                  </div>
+                </div>
+                <div class="card-footer d-flex gap-2 justify-content-end">
+                  <button class="btn btn-outline-danger" id="decisao-rejeitar"><i class="ti ti-x me-1"></i>Rejeitar sugestão</button>
+                  <button class="btn btn-success" id="decisao-aprovar"><i class="ti ti-check me-1"></i>Aprovar sugestão</button>
+                </div>
+              </div>
+              <div id="triagem-registro"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Pacientes -->
+        <section id="tela-pacientes" class="tela d-none">
+          <div class="row row-cards">
+            <div class="col-lg-7">
+              <div class="card">
+                <div class="card-header">
+                  <h3 class="card-title">Pacientes internados</h3>
+                  <div class="card-actions"><input class="form-control form-control-sm" id="pacientes-filtro" placeholder="Filtrar por id, diagnóstico ou setor"></div>
+                </div>
+                <div class="table-responsive tabela-rolagem">
+                  <table class="table table-vcenter card-table table-hover">
+                    <thead><tr><th>Paciente</th><th>Diagnóstico</th><th>Setor</th><th class="text-center">Críticos</th></tr></thead>
+                    <tbody id="pacientes-lista"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+            <div class="col-lg-5">
+              <div class="card" id="pacientes-detalhe"><div class="card-body text-secondary">Selecione um paciente na lista.</div></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Auditoria -->
+        <section id="tela-auditoria" class="tela d-none">
+          <div class="row row-cards">
+            <div class="col-lg-6">
+              <div class="card">
+                <div class="card-header">
+                  <h3 class="card-title">Execuções recentes</h3>
+                  <div class="card-actions"><button class="btn btn-sm btn-ghost-secondary" id="auditoria-atualizar"><i class="ti ti-refresh"></i></button></div>
+                </div>
+                <div class="table-responsive tabela-rolagem">
+                  <table class="table table-vcenter card-table table-hover">
+                    <thead><tr><th>Início</th><th>Execução</th><th>Fluxo</th><th>Paciente</th><th class="text-center">Etapas</th></tr></thead>
+                    <tbody id="auditoria-lista"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+            <div class="col-lg-6">
+              <div class="card">
+                <div class="card-header"><h3 class="card-title" id="auditoria-titulo">Trilha da execução</h3></div>
+                <div class="card-body" id="auditoria-trilha"><p class="text-secondary mb-0">Selecione uma execução. Cada etapa registra o que produziu, o texto enviado ao modelo, as fontes, a validação e a decisão do médico.</p></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </div>
+
+    <footer class="footer footer-transparent d-print-none">
+      <div class="container-xl text-secondary small">
+        Projeto acadêmico (FIAP Pós Tech, Tech Challenge Fase 3). Hospital e dados fictícios: não usar na prática clínica.
+      </div>
+    </footer>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.7.3/dist/js/tabler.min.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>
