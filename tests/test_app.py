@@ -18,3 +18,8 @@ def test_modelfile_usa_gguf_prompt_do_treino_e_stop_tokens():
     assert mf.startswith(f"FROM /models/gguf/{GGUF_NOME}")
     assert SYSTEM_PROMPT in mf
     assert 'PARAMETER stop "<|im_end|>"' in mf
+
+
+def test_formatar_escapa_html_do_modelo():
+    saida = formatar("pH < 7,30 e glicemia > 250.\n\nFontes: [PROT-CAD-01 §2]")
+    assert "pH &lt; 7,30 e glicemia &gt; 250." in saida
