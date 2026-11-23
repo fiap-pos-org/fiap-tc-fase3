@@ -22,6 +22,7 @@ async function api(caminho, opcoes = {}) {
     ...opcoes,
     body: opcoes.body ? JSON.stringify(opcoes.body) : undefined,
   });
+  if (resp.status === 401) { location.href = "/"; throw new Error("Sessão expirada"); }
   if (!resp.ok) {
     const erro = await resp.json().catch(() => ({}));
     throw new Error(typeof erro.detail === "string" ? erro.detail : `Erro ${resp.status}`);
@@ -347,6 +348,11 @@ async function iniciar() {
   navegar();
   try {
     $("modelo").textContent = (await api("/api/info")).modelo;
+    const sessao = await api("/api/sessao");
+    if (sessao.login_ativo) {
+      $("sessao").classList.remove("d-none");
+      $("sessao-usuario").textContent = sessao.usuario;
+    }
     PACIENTES = await api("/api/pacientes");
   } catch (e) { avisoErro($("chat"), `Não foi possível carregar os dados: ${e.message}`); }
   preencherSeletor($("duvida-paciente"), true);
@@ -355,6 +361,7 @@ async function iniciar() {
   renderListaPacientes();
   renderIndicadores();
   $("tema").addEventListener("click", alternarTema);
+  $("sair").addEventListener("click", async () => { await api("/api/logout", { method: "POST" }); location.href = "/"; });
   $("duvida-paciente").addEventListener("change", selecionarPacienteDuvida);
   $("duvida-form").addEventListener("submit", enviarPergunta);
   $("duvida-limpar").addEventListener("click", () => limpar($("chat")));

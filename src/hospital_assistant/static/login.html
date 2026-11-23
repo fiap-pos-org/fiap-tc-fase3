@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Entrar | Hospital Santa Aurora</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.7.3/dist/css/tabler.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.50.0/dist/tabler-icons.min.css">
+  <link rel="stylesheet" href="/static/app.css">
+  <script>
+    (function () {
+      var tema = null;
+      try { tema = localStorage.getItem("tema"); } catch (e) {}
+      if (tema !== "light" && tema !== "dark") {
+        tema = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      }
+      document.documentElement.setAttribute("data-bs-theme", tema);
+    })();
+  </script>
+</head>
+<body class="d-flex flex-column">
+<div class="page page-center">
+  <div class="container container-tight py-4">
+    <div class="text-center mb-4">
+      <div class="marca justify-content-center">
+        <span class="marca-icone"><i class="ti ti-heart-plus"></i></span>
+        <span class="marca-texto">Santa Aurora<small>Assistente clínico</small></span>
+      </div>
+    </div>
+    <div class="card card-md">
+      <div class="card-body">
+        <h2 class="h2 text-center mb-2">Acesso restrito</h2>
+        <p class="text-secondary text-center mb-4">Entre com as credenciais fornecidas para a demonstração.</p>
+        <form id="form-login" autocomplete="on" novalidate>
+          <div class="mb-3">
+            <label class="form-label" for="usuario">Usuário</label>
+            <input class="form-control" id="usuario" name="username" autocomplete="username" required maxlength="100">
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="senha">Senha</label>
+            <input class="form-control" id="senha" name="password" type="password" autocomplete="current-password" required maxlength="200">
+          </div>
+          <div class="alert alert-danger d-none" id="erro" role="alert"></div>
+          <button class="btn btn-primary w-100" id="entrar" type="submit"><i class="ti ti-login me-1"></i>Entrar</button>
+        </form>
+      </div>
+    </div>
+    <p class="text-center text-secondary small mt-3">
+      Projeto acadêmico (FIAP Pós Tech, Tech Challenge Fase 3). Hospital e dados fictícios.
+    </p>
+  </div>
+</div>
+<script>
+  document.getElementById("form-login").addEventListener("submit", async function (ev) {
+    ev.preventDefault();
+    var erro = document.getElementById("erro");
+    var botao = document.getElementById("entrar");
+    erro.classList.add("d-none");
+    botao.disabled = true;
+    try {
+      var resp = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          usuario: document.getElementById("usuario").value,
+          senha: document.getElementById("senha").value,
+        }),
+      });
+      if (resp.ok) { location.href = "/"; return; }
+      var dados = await resp.json().catch(function () { return {}; });
+      erro.textContent = typeof dados.detail === "string" ? dados.detail : "Não foi possível entrar.";
+      erro.classList.remove("d-none");
+    } catch (e) {
+      erro.textContent = "Falha de conexão. Tente novamente.";
+      erro.classList.remove("d-none");
+    } finally {
+      botao.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>
