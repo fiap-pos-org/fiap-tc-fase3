@@ -1,14 +1,17 @@
 """Banco estruturado do prontuário (SQLite), populado com os prontuários anonimizados.
 
-O assistente só lê este banco, sempre com consultas parametrizadas: o modelo nunca
-escreve SQL.
+O modelo nunca escreve SQL nem grava no banco: as consultas são funções parametrizadas
+chamadas pelo fluxo. As únicas escritas são do próprio sistema: alertas de valores críticos,
+condutas com a decisão do médico e a chegada de resultados de exames (simulação do laboratório).
 """
 
 import json
 import sqlite3
+from datetime import datetime
 from pathlib import Path
 
 from hospital_assistant.config import DB_PATH, PROCESSED_DIR
+from hospital_assistant.data.exames import EXAMES_LAB
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS pacientes (
@@ -43,7 +46,29 @@ CREATE TABLE IF NOT EXISTS exames (
     data_solicitacao TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_exames_paciente ON exames(paciente_id);
+CREATE TABLE IF NOT EXISTS alertas (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    paciente_id TEXT NOT NULL REFERENCES pacientes(id),
+    trace_id TEXT NOT NULL,
+    mensagem TEXT NOT NULL,
+    criado_em TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS condutas (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    paciente_id TEXT NOT NULL REFERENCES pacientes(id),
+    trace_id TEXT NOT NULL,
+    sugestao TEXT NOT NULL,
+    fontes TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('aprovada', 'rejeitada', 'bloqueada')),
+    medico TEXT,
+    comentario TEXT,
+    registrado_em TEXT NOT NULL
+);
 """
+
+
+def _agora() -> str:
+    return datetime.now().isoformat(timespec="seconds")
 
 
 def conectar(path: Path = DB_PATH) -> sqlite3.Connection:
@@ -99,6 +124,7 @@ def inicializar(path: Path = DB_PATH) -> sqlite3.Connection:
     """Abre o banco; cria e popula a partir dos prontuários anonimizados se ainda não existir."""
     novo = not path.exists()
     conn = conectar(path)
+    conn.executescript(SCHEMA)  # cria tabelas novas em bancos antigos
     if novo:
         with (PROCESSED_DIR / "prontuarios.jsonl").open(encoding="utf-8") as f:
             popular(conn, [json.loads(linha) for linha in f if linha.strip()])
@@ -137,3 +163,61 @@ def buscar_paciente(conn: sqlite3.Connection, paciente_id: str) -> dict | None:
         )
     ]
     return paciente
+
+
+def registrar_alerta(
+    conn: sqlite3.Connection, paciente_id: str, trace_id: str, mensagem: str
+) -> None:
+    conn.execute(
+        "INSERT INTO alertas (paciente_id, trace_id, mensagem, criado_em) VALUES (?, ?, ?, ?)",
+        (paciente_id, trace_id, mensagem, _agora()),
+    )
+    conn.commit()
+
+
+def registrar_conduta(
+    conn: sqlite3.Connection,
+    paciente_id: str,
+    trace_id: str,
+    sugestao: str,
+    fontes: list[str],
+    status: str,
+    medico: str | None = None,
+    comentario: str | None = None,
+) -> None:
+    conn.execute(
+        "INSERT INTO condutas (paciente_id, trace_id, sugestao, fontes, status, medico, comentario,"
+        " registrado_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (
+            paciente_id,
+            trace_id,
+            sugestao,
+            json.dumps(fontes, ensure_ascii=False),
+            status,
+            medico,
+            comentario,
+            _agora(),
+        ),
+    )
+    conn.commit()
+
+
+def listar_registros(conn: sqlite3.Connection, tabela: str, trace_id: str) -> list[dict]:
+    """Alertas ou condutas de uma execução do fluxo."""
+    if tabela not in {"alertas", "condutas"}:
+        raise ValueError(tabela)
+    rows = conn.execute(f"SELECT * FROM {tabela} WHERE trace_id = ? ORDER BY id", (trace_id,))
+    return [dict(r) for r in rows]
+
+
+def registrar_resultado(
+    conn: sqlite3.Connection, paciente_id: str, codigo: str, valor: float
+) -> None:
+    """Simula o laboratório liberando um novo resultado (o prontuário passa a refleti-lo)."""
+    exame = EXAMES_LAB[codigo]
+    conn.execute(
+        "INSERT INTO exames (paciente_id, codigo, nome, valor, unidade, status, data)"
+        " VALUES (?, ?, ?, ?, ?, 'resultado', ?)",
+        (paciente_id, codigo, exame.nome, valor, exame.unidade, _agora()),
+    )
+    conn.commit()
