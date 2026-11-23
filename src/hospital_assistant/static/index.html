@@ -7,15 +7,25 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.7.3/dist/css/tabler.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.50.0/dist/tabler-icons.min.css">
   <link rel="stylesheet" href="/static/app.css">
+  <script>
+    (function () {
+      var tema = null;
+      try { tema = localStorage.getItem("tema"); } catch (e) {}
+      if (tema !== "light" && tema !== "dark") {
+        tema = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      }
+      document.documentElement.setAttribute("data-bs-theme", tema);
+    })();
+  </script>
 </head>
 <body>
 <div class="page">
-  <aside class="navbar navbar-vertical navbar-expand-lg" data-bs-theme="dark">
+  <aside class="navbar navbar-vertical navbar-expand-lg menu-lateral">
     <div class="container-fluid">
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#menu" aria-label="Abrir menu">
         <span class="navbar-toggler-icon"></span>
       </button>
-      <div class="navbar-brand navbar-brand-autodark marca">
+      <div class="marca">
         <span class="marca-icone"><i class="ti ti-heart-plus"></i></span>
         <span class="marca-texto">Santa Aurora<small>Assistente clínico</small></span>
       </div>
@@ -43,8 +53,12 @@
             <div class="page-pretitle">Hospital Santa Aurora</div>
             <h2 class="page-title" id="titulo">Dúvida clínica</h2>
           </div>
-          <div class="col-auto">
-            <span class="badge bg-green-lt"><i class="ti ti-lock me-1"></i>Toda sugestão exige validação médica</span>
+          <div class="col-auto d-flex align-items-center gap-2">
+            <span class="badge bg-green-lt d-none d-md-inline-flex"><i class="ti ti-lock me-1"></i>Toda sugestão exige validação médica</span>
+            <button class="btn btn-outline-secondary btn-sm" id="tema" type="button" title="Alternar tema claro/escuro">
+              <i class="ti ti-moon icone-escuro me-1"></i><span class="icone-escuro">Tema escuro</span>
+              <i class="ti ti-sun icone-claro me-1"></i><span class="icone-claro">Tema claro</span>
+            </button>
           </div>
         </div>
       </div>
@@ -164,6 +178,7 @@
 
         <!-- Pacientes -->
         <section id="tela-pacientes" class="tela d-none">
+          <div class="row row-cards mb-3" id="indicadores"></div>
           <div class="row row-cards">
             <div class="col-lg-7">
               <div class="card">

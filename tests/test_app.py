@@ -32,7 +32,7 @@ def test_pagina_e_info(cliente):
 
 def test_pacientes_e_prontuario_com_criticos(cliente):
     pacientes = cliente.get("/api/pacientes").json()
-    assert len(pacientes) == 200 and "criticos" in pacientes[0]
+    assert len(pacientes) == 200 and {"criticos", "pendentes"} <= pacientes[0].keys()
     p = cliente.get("/api/pacientes/PAC-0005").json()
     assert any(e["critico"] and e["limite_critico"] for e in p["exames"])
     assert cliente.get("/api/pacientes/PAC-9999").status_code == 404
