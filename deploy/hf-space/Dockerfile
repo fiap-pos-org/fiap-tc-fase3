@@ -1,5 +1,5 @@
 # Imagem única para o Hugging Face Spaces: Ollama + aplicação no mesmo container.
-# O Spaces não roda docker compose; o compose da raiz continua sendo o jeito de rodar local.
+# Usada no Hugging Face Spaces e na VPS (deploy/vps). Contexto de build: a raiz do repositório.
 FROM ollama/ollama:0.40.14
 
 COPY --from=astral/uv:0.13.5 /uv /bin/uv
@@ -35,7 +35,7 @@ RUN ollama serve & \
     ollama pull bge-m3 && \
     uv run --no-sync python -c "from hospital_assistant.db.database import inicializar; from hospital_assistant.rag.indice import criar_indice; inicializar(); criar_indice()"
 
-COPY start.sh /app/start.sh
+COPY deploy/hf-space/start.sh /app/start.sh
 RUN chmod +x /app/start.sh && chown -R 1000:1000 /app /home/ubuntu
 USER 1000
 

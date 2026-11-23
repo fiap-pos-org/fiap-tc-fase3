@@ -1,0 +1,32 @@
+# Produção na VPS: imagem única (Ollama + aplicação) atrás do Traefik já existente (rede "edge").
+# Antes de subir:
+#   1. baixar o modelo:  ./deploy/vps/baixar_modelo.sh
+#   2. criar deploy/vps/.env com APP_USUARIO e APP_SENHA (login obrigatório)
+# Subir: docker compose -f deploy/vps/docker-compose.yml up -d --build
+services:
+  app:
+    build:
+      context: ../..
+      dockerfile: deploy/hf-space/Dockerfile
+    env_file: .env
+    environment:
+      OLLAMA_NUM_THREAD: ${OLLAMA_NUM_THREAD:-1}
+    volumes:
+      - dados:/app/var  # banco, índice, checkpoints e auditoria persistem entre reinícios
+    mem_limit: 3g        # teto rígido: se estourar, só este container é afetado
+    memswap_limit: 4g
+    networks:
+      - edge
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.assistente-medico.rule=Host(`assistente-medico.williamdevops.com.br`)
+      - traefik.http.routers.assistente-medico.entrypoints=websecure
+      - traefik.http.services.assistente-medico.loadbalancer.server.port=7860
+    restart: unless-stopped
+
+volumes:
+  dados:
+
+networks:
+  edge:
+    external: true

@@ -1,0 +1,13 @@
+# Contexto da imagem única: só o que a aplicação precisa (inclui o modelo, que o .dockerignore geral exclui).
+*
+!pyproject.toml
+!uv.lock
+!README.md
+!src/**
+!data/raw/protocolos/**
+!data/raw/modelos/**
+!data/processed/prontuarios.jsonl
+!models/gguf/hospital-assistant-q4_k_m.gguf
+!models/gguf/Modelfile
+!deploy/hf-space/start.sh
+**/__pycache__
