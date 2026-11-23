@@ -14,17 +14,17 @@
     "CEP": 0,
     "CAMPOS_DESCARTADOS": 1600
   },
-  "exemplos_gerados": 1310,
+  "exemplos_gerados": 1356,
   "curadoria_descartes": {},
-  "exemplos_aprovados": 1310,
+  "exemplos_aprovados": 1356,
   "splits": {
     "train": {
       "faq": 135,
       "protocolo": 159,
       "modelo": 58,
       "paciente": 640,
-      "seguranca": 54,
-      "total": 1046
+      "seguranca": 91,
+      "total": 1083
     },
     "val": {
       "faq": 18,
@@ -39,8 +39,8 @@
       "protocolo": 18,
       "modelo": 6,
       "paciente": 80,
-      "seguranca": 7,
-      "total": 126
+      "seguranca": 16,
+      "total": 135
     }
   }
 }
