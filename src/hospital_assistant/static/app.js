@@ -22,7 +22,8 @@ async function api(caminho, opcoes = {}) {
     ...opcoes,
     body: opcoes.body ? JSON.stringify(opcoes.body) : undefined,
   });
-  if (resp.status === 401) { location.href = "/"; throw new Error("Sessão expirada"); }
+  // Sessão ausente ou expirada: vai direto para o login (ir para "/" podia reabrir o sistema do cache).
+  if (resp.status === 401) { location.replace("/static/login.html"); throw new Error("Sessão expirada"); }
   if (!resp.ok) {
     const erro = await resp.json().catch(() => ({}));
     throw new Error(typeof erro.detail === "string" ? erro.detail : `Erro ${resp.status}`);
@@ -361,7 +362,10 @@ async function iniciar() {
   renderListaPacientes();
   renderIndicadores();
   $("tema").addEventListener("click", alternarTema);
-  $("sair").addEventListener("click", async () => { await api("/api/logout", { method: "POST" }); location.href = "/"; });
+  $("sair").addEventListener("click", async () => {
+    await fetch("/api/logout", { method: "POST" });
+    location.replace("/static/login.html");
+  });
   $("duvida-paciente").addEventListener("change", selecionarPacienteDuvida);
   $("duvida-form").addEventListener("submit", enviarPergunta);
   $("duvida-limpar").addEventListener("click", () => limpar($("chat")));

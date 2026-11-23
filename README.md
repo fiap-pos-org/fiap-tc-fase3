@@ -1,97 +1,159 @@
-# Assistente médico virtual: Hospital Santa Aurora
+<h1 align="center">
+  Hospital Santa Aurora · Assistente Médico
+</h1>
 
-Assistente clínico que responde dúvidas de médicos com base nos protocolos internos e no prontuário do paciente, executa uma triagem automatizada e **nunca registra uma conduta sem a aprovação de um médico**. Feito com um LLM ajustado por fine-tuning, LangChain e LangGraph, rodando 100% local.
+<p align="center">
+  <img src="docs/arch.gif" alt="Arquitetura: o médico acessa por HTTPS, o Traefik encaminha para o container com FastAPI, fluxos LangGraph, Ollama (Qwen2.5 ajustado com QLoRA) e SQLite; o modelo é treinado no Google Colab e publicado no Hugging Face" />
+</p>
 
-**[Demonstração](https://william-devops-hospital-assistant.hf.space)** | **[Relatório técnico](docs/relatorio.md)** | **[Enunciado](desafio/)**
+<p align="center">
+  <a href="https://skillicons.dev">
+    <img src="https://skillicons.dev/icons?i=python,pytorch,fastapi,sqlite,docker,linux" alt="Stacks" />
+  </a>
+</p>
 
-> Projeto acadêmico (Tech Challenge Fase 3, Pós Tech IA para Devs, FIAP). O hospital e todos os dados são fictícios: não usar na prática clínica.
+<p align="center">
+  <img src="https://img.shields.io/badge/LangChain-1C3C3C?logo=langchain&logoColor=white" alt="LangChain" />
+  <img src="https://img.shields.io/badge/LangGraph-1C3C3C?logo=langchain&logoColor=white" alt="LangGraph" />
+  <img src="https://img.shields.io/badge/Ollama-000000?logo=ollama&logoColor=white" alt="Ollama" />
+  <img src="https://img.shields.io/badge/Hugging%20Face-FFD21E?logo=huggingface&logoColor=black" alt="Hugging Face" />
+  <img src="https://img.shields.io/badge/Google%20Colab-F9AB00?logo=googlecolab&logoColor=white" alt="Google Colab" />
+  <img src="https://img.shields.io/badge/Qwen2.5--1.5B-QLoRA-615CED" alt="Qwen2.5-1.5B QLoRA" />
+</p>
 
-## O que faz
+<p align="center">
+  <b><a href="https://aurora.williamdevops.com.br">Demonstração</a></b> ·
+  <b><a href="docs/relatorio.md">Relatório técnico</a></b> ·
+  <b><a href="https://huggingface.co/william-devops/hospital-assistant-gguf">Modelo no Hugging Face</a></b> ·
+  <b><a href="desafio/">Enunciado</a></b>
+</p>
 
-- **Dúvida clínica**: responde com base nos protocolos e, com um paciente selecionado, no prontuário dele, sempre citando a fonte (`[PROT-SEPSE-01 §4]`).
-- **Triagem automatizada**: verifica exames pendentes e valores críticos, alerta a equipe, sugere a conduta do protocolo e para até o médico aprovar ou rejeitar.
-- **Segurança em camadas**: recusa prescrições e tentativas de burlar regras sem consultar o modelo, bloqueia respostas sem fundamento e calcula valores críticos em código.
-- **Auditoria**: cada etapa registra quem pediu, o que o modelo recebeu e respondeu, as fontes, a validação e a decisão do médico.
+## Qual a finalidade do projeto?
+
+Assistente clínico de um hospital fictício que responde dúvidas de médicos com base nos protocolos internos e no prontuário do paciente, executa uma triagem automatizada e **nunca registra uma conduta sem a aprovação de um médico**. O modelo é o Qwen2.5-1.5B ajustado com QLoRA em dados sintéticos e anonimizados, servido localmente pelo Ollama, sem nenhuma API externa de LLM. Projeto do Tech Challenge Fase 3 (Pós Tech IA para Devs).
+
+| Recurso | Como funciona |
+|---|---|
+| Dúvida clínica | Busca semântica nos protocolos (bge-m3) + prontuário do paciente; o modelo ajustado redige a resposta e cita a fonte (`[PROT-SEPSE-01 §4]`) |
+| Triagem automatizada | Fluxo LangGraph: pendências, valores críticos, alertas, conduta do protocolo, validação e **pausa até o médico aprovar** |
+| Segurança em camadas | Pedido de prescrição e injeção de prompt barrados antes do modelo; resposta sem fundamento é reprovada; valores críticos calculados em código |
+| Auditoria | Cada etapa registra quem pediu, o que o modelo recebeu e respondeu, as fontes, a validação e a decisão do médico |
+
+> O hospital e todos os dados são fictícios: não usar na prática clínica.
 
 ## Arquitetura
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/diagramas/arquitetura-escuro.svg">
-  <img alt="Arquitetura: o modelo só redige; fatos vêm do prontuário e dos protocolos; a triagem pausa até o médico decidir; cada etapa vai para a auditoria" src="docs/diagramas/arquitetura-claro.svg">
-</picture>
+O médico acessa pelo navegador; o Traefik termina o HTTPS e encaminha para um container com a API (FastAPI e front-end), os fluxos LangGraph, o Ollama (modelo ajustado e embeddings) e o SQLite (prontuário, auditoria e estado dos fluxos). O modelo é ajustado no Google Colab, publicado no Hugging Face em GGUF e importado no Ollama.
 
-O modelo ajustado só redige o texto: os fatos vêm do prontuário (SQLite) e dos protocolos (busca semântica), e a decisão é sempre do médico.
+## Fluxo de funcionamento
 
-## Fluxo de triagem
+<p align="center">
+  <img src="docs/triagem.gif" alt="Fluxo de triagem: verificações em código, o modelo ajustado redige a sugestão, a validação barra respostas inseguras e nada vira conduta sem a aprovação do médico" />
+</p>
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/diagramas/triagem-escuro.svg">
-  <img alt="Fluxo de triagem: verificações em código, o modelo só redige a sugestão, a validação barra respostas inseguras e nada vira conduta sem a aprovação do médico" src="docs/diagramas/triagem-claro.svg">
-</picture>
+1. **Verificações em código**: carrega o prontuário, lista os exames pendentes e aplica os limites de valor crítico do protocolo; se houver crítico, grava os alertas para a equipe.
+2. **Modelo ajustado**: busca o protocolo do caso e o modelo redige a sugestão, citando as fontes.
+3. **Validação**: reprova fonte inexistente ou fora dos trechos consultados, conflito com alergia e prescrição com dose e via; a sugestão reprovada é registrada como bloqueada.
+4. **Decisão humana**: o fluxo pausa (`interrupt` do LangGraph) até um médico identificado aprovar ou rejeitar; só então a conduta é registrada.
 
 ## Resultados
 
-Qwen2.5-1.5B-Instruct ajustado com **QLoRA** em 1.083 exemplos sintéticos e anonimizados (11 min numa GPU L4), comparado ao modelo original no conjunto de teste (exemplos nunca vistos no treino):
+Modelo original x ajustado (v2), no Ollama com a mesma quantização, em exemplos que o modelo nunca viu no treino:
 
-| | Original | Ajustado |
+| Métrica | Original | Ajustado |
 |---|---|---|
-| ROUGE-L | 0,25 | **0,71** |
-| Fontes exatamente corretas | 2% | **56%** |
-| Respostas que citam fonte | 47% | **98%** |
-| Busca: fonte certa entre os 3 trechos | | **91,7%** |
+| ROUGE-L | 0,25 | **0,72** |
+| Fontes exatamente corretas | 2% | **62%** |
+| Respostas que citam fonte | 47% | **100%** |
+| Ataques respondidos com segurança (sistema completo) | | **93%** |
+| Busca: seção certa entre os 3 trechos entregues | | **91,7%** |
 
-Metodologia, ataques de segurança, PubMedQA e análise completa no [relatório](docs/relatorio.md#8-avaliação-e-análise-dos-resultados).
+Metodologia, PubMedQA, comparação entre versões e análise no [relatório](docs/relatorio.md).
 
-## Como rodar
+## Rodando localmente
 
 Requisitos: Docker com Docker Compose.
 
 ```bash
 git clone https://github.com/fiap-pos-org/fiap-tc-fase3.git && cd fiap-tc-fase3
-uvx --from huggingface_hub hf download william-devops/hospital-assistant-gguf --local-dir models/gguf
-docker compose up -d --build
+./deploy/vps/baixar_modelo.sh       # baixa o modelo ajustado do Hugging Face para models/gguf
+docker compose up -d --build        # http://localhost:7860
 ```
 
-Acesse http://localhost:7860. Para ativar o login, defina `APP_USUARIO` e `APP_SENHA` no ambiente do serviço `app`.
+Para ativar o login, defina `APP_USUARIO` e `APP_SENHA` no serviço `app`. A demonstração online usa o usuário `admin` e a senha `admin123`.
 
 <details>
-<summary><b>Reproduzir do zero (dados, treino, avaliação e testes)</b></summary>
+<summary><b>Reproduzir do zero: dados, treino, avaliação e testes</b></summary>
 
 Requer [uv](https://docs.astral.sh/uv/). Para treinar: GPU NVIDIA (4 GB bastam) ou o [Colab CLI](https://github.com/googlecolab/google-colab-cli).
 
 ```bash
 uv sync                                                   # ambiente completo
-uv run python -m hospital_assistant.data.pipeline         # dados sintéticos, anonimização, dataset
+uv run python -m hospital_assistant.data.pipeline         # dados sintéticos, anonimização e dataset
 uv run python -m hospital_assistant.finetune.train        # fine-tuning QLoRA (models/adapter)
 uv run python -m hospital_assistant.finetune.export       # mescla o adapter (models/merged)
 docker compose up -d --build                              # converte para GGUF e sobe a aplicação
-uv run python -m hospital_assistant.evaluation.avaliar    # avaliação (respostas e métricas em docs/avaliacao)
+uv run python -m hospital_assistant.evaluation.avaliar    # avaliação (docs/avaliacao)
 uv run pytest                                             # testes
 E2E_URL=http://localhost:7860 uv run pytest tests/test_e2e.py   # check-up contra a aplicação rodando
 ```
 
 </details>
 
-## Estrutura
+## Tecnologias utilizadas
 
+- **Qwen2.5-1.5B-Instruct:** modelo base, ajustado para o domínio do hospital;
+- **PyTorch, PEFT e TRL:** fine-tuning QLoRA (4 bits + LoRA) no Google Colab;
+- **llama.cpp e Ollama:** conversão para GGUF Q4_K_M e inferência em CPU;
+- **LangChain:** ferramentas de consulta ao prontuário e aos protocolos e a cadeia LCEL do modelo;
+- **LangGraph:** fluxos de triagem e de dúvida clínica, com pausa para aprovação humana;
+- **bge-m3:** embeddings multilíngues da busca semântica nos protocolos;
+- **SQLite:** prontuários, alertas, condutas, trilha de auditoria e checkpoints dos fluxos;
+- **spaCy e Faker:** geração dos dados sintéticos e anonimização (NER);
+- **FastAPI e Tabler:** API, login e front-end com tema claro e escuro;
+- **Docker e Traefik:** empacotamento e publicação com HTTPS na VPS;
+- **Hugging Face:** publicação do modelo ajustado.
+
+## Estrutura do repositório
+
+```text
+fiap-tc-fase3/
+├── data/                   # protocolos, modelos, perguntas frequentes, prontuários e dataset (sintéticos)
+├── src/hospital_assistant/
+│   ├── data/               # geração, anonimização, curadoria e montagem do dataset
+│   ├── finetune/           # treino QLoRA e exportação para o Ollama
+│   ├── db/  rag/           # prontuário (SQLite) e busca semântica nos protocolos
+│   ├── assistant/          # ferramentas LangChain e cadeia LCEL
+│   ├── graph/              # fluxos LangGraph (triagem e dúvida clínica)
+│   ├── safety/             # travas de entrada e validação das respostas
+│   ├── observability/      # trilha de auditoria
+│   ├── evaluation/         # avaliação comparativa e gráficos
+│   ├── api.py              # API FastAPI e login
+│   └── static/             # front-end (Tabler)
+├── deploy/                 # imagem única e compose de produção (VPS)
+├── docs/
+│   ├── arch.gif            # diagrama de arquitetura
+│   ├── triagem.gif         # fluxo de triagem
+│   ├── relatorio.md        # relatório técnico
+│   └── avaliacao/          # métricas, respostas e gráficos
+├── tests/                  # testes (inclui o check-up de ponta a ponta)
+└── docker-compose.yml      # execução local
 ```
-data/                  protocolos, modelos, perguntas frequentes, prontuários e dataset (sintéticos)
-src/hospital_assistant/
-  data/                geração, anonimização, curadoria e montagem do dataset
-  finetune/            treino QLoRA e exportação para o Ollama
-  db/ rag/             prontuário (SQLite) e busca semântica nos protocolos
-  assistant/ graph/    ferramentas LangChain, cadeia LCEL e fluxos LangGraph
-  safety/ observability/  travas de segurança e trilha de auditoria
-  evaluation/          avaliação comparativa e gráficos
-  api.py static/       API FastAPI e front-end (Tabler)
-deploy/                imagem e publicação no Hugging Face Spaces
-docs/                  relatório, diagramas e resultados da avaliação
-```
-
-## Tecnologias
-
-Qwen2.5-1.5B-Instruct, PEFT/TRL (QLoRA), llama.cpp, Ollama, LangChain, LangGraph, bge-m3, SQLite, FastAPI, Tabler, Docker.
 
 ## Autores
 
-Nicolas Gomes (RM 374793) e William Coelho (RM 374810).
+<table>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/willtechdev">
+        <img src="https://github.com/willtechdev.png" width="100px;" alt="William Coelho"/><br>
+        <sub><b>William Coelho</b></sub>
+      </a><br>
+      <sub>RM 374810</sub>
+    </td>
+    <td align="center">
+      <sub><b>Nicolas Gomes</b></sub><br>
+      <sub>RM 374793</sub>
+    </td>
+  </tr>
+</table>

@@ -14,7 +14,8 @@ test -f "$RAIZ/models/gguf/hospital-assistant-q4_k_m.gguf" || { echo "GGUF não 
 
 # Só o necessário para a aplicação: código, documentos internos, prontuários anonimizados e modelo.
 mkdir -p "$PASTA/data/raw" "$PASTA/data/processed" "$PASTA/models/gguf"
-cp "$RAIZ/deploy/hf-space/Dockerfile" "$RAIZ/deploy/hf-space/start.sh" "$RAIZ/deploy/hf-space/README.md" "$PASTA/"
+cp "$RAIZ/deploy/hf-space/Dockerfile" "$RAIZ/deploy/hf-space/README.md" "$PASTA/"
+mkdir -p "$PASTA/deploy/hf-space" && cp "$RAIZ/deploy/hf-space/start.sh" "$PASTA/deploy/hf-space/"
 cp "$RAIZ/pyproject.toml" "$RAIZ/uv.lock" "$PASTA/"
 cp -r "$RAIZ/src" "$PASTA/src"
 find "$PASTA/src" -name __pycache__ -type d -prune -exec rm -rf {} +

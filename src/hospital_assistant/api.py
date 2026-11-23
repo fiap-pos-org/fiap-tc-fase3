@@ -102,6 +102,9 @@ def _exame(e: dict) -> dict:
 
 
 COOKIE = "sessao"
+# A raiz entrega o login ou o sistema conforme a sessão: o navegador não pode guardar em cache,
+# senão reabre o sistema sem sessão, recebe 401 da API e entra em loop de recarga.
+SEM_CACHE = {"Cache-Control": "no-store"}
 DURACAO_SESSAO = 8 * 3600
 
 
@@ -295,13 +298,21 @@ def criar_app(
             raise HTTPException(404, "Execução não encontrada")
         return [{**e, "nome": ETAPAS.get(e["etapa"], e["etapa"])} for e in eventos]
 
+    @app.middleware("http")
+    async def revalidar_estaticos(request: Request, call_next):
+        # Arquivos do front sempre revalidados: depois de um deploy o navegador pega a versão nova.
+        resposta = await call_next(request)
+        if request.url.path.startswith("/static/"):
+            resposta.headers["Cache-Control"] = "no-cache"
+        return resposta
+
     app.mount("/static", StaticFiles(directory=ESTATICOS), name="static")
 
     @app.get("/", include_in_schema=False)
     def index(request: Request) -> FileResponse:
         if _usuario_da_sessao(request) is None:
-            return FileResponse(ESTATICOS / "login.html")
-        return FileResponse(ESTATICOS / "index.html")
+            return FileResponse(ESTATICOS / "login.html", headers=SEM_CACHE)
+        return FileResponse(ESTATICOS / "index.html", headers=SEM_CACHE)
 
     return app
 
@@ -320,7 +331,7 @@ def main() -> None:
     logging.getLogger("httpx").setLevel(logging.WARNING)
     conn = inicializar()
     llm = ChatOllama(
-        model=MODEL_NAME, base_url=OLLAMA_BASE_URL, temperature=0.2, num_thread=OLLAMA_NUM_THREAD
+        model=MODEL_NAME, base_url=OLLAMA_BASE_URL, temperature=0, num_thread=OLLAMA_NUM_THREAD
     )
     checkpointer = SqliteSaver(
         sqlite3.connect(STORAGE_DIR / "checkpoints.db", check_same_thread=False)
