@@ -5,15 +5,28 @@ description = "Assistente virtual médico com fine-tuning de LLM, LangChain e La
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [
-    "faker>=40.63.0",
-    "pt-core-news-md",
-    "spacy>=3.8.18",
+    "gradio>=6.32.0",
+    "langchain-ollama>=1.1.0",
 ]
 
 [dependency-groups]
 dev = [
     "pytest>=8",
     "ruff>=0.8",
+]
+data = [
+    "faker>=40.63.0",
+    "pt-core-news-md",
+    "spacy>=3.8.18",
+]
+train = [
+    "accelerate>=1.16.0",
+    "bitsandbytes>=0.50.2",
+    "datasets>=5.2.0",
+    "peft>=0.22.0",
+    "torch>=2.15.0",
+    "transformers>=5.24.0",
+    "trl>=1.18.2",
 ]
 
 [build-system]
@@ -30,6 +43,10 @@ ignore = ["E501"]  # linhas longas ficam a cargo do ruff format
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.uv]
+# Localmente instala tudo; a imagem Docker usa --no-default-groups (só o runtime da app).
+default-groups = "all"
 
 [tool.uv.sources]
 pt-core-news-md = { url = "https://github.com/explosion/spacy-models/releases/download/pt_core_news_md-3.8.0/pt_core_news_md-3.8.0-py3-none-any.whl" }

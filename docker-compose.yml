@@ -1,0 +1,61 @@
+services:
+  # Converte models/merged (safetensors) para GGUF e quantiza em Q4_K_M com o llama.cpp.
+  # Só roda a conversão se o GGUF ainda não existir (o export apaga o GGUF antigo).
+  gguf:
+    image: ghcr.io/ggml-org/llama.cpp:full-b12182
+    volumes:
+      - ./models:/models
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        set -e
+        cd /app
+        if [ ! -f /models/gguf/hospital-assistant-q4_k_m.gguf ]; then
+          python3 convert_hf_to_gguf.py /models/merged --outtype f16 --outfile /models/gguf/hospital-assistant-f16.gguf
+          ./llama-quantize /models/gguf/hospital-assistant-f16.gguf /models/gguf/hospital-assistant-q4_k_m.gguf Q4_K_M
+          rm /models/gguf/hospital-assistant-f16.gguf
+        fi
+    restart: "no"
+
+  ollama:
+    image: ollama/ollama:0.40.14
+    volumes:
+      - ollama_data:/root/.ollama
+      - ./models/gguf:/models/gguf:ro
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  # Importa o GGUF quantizado no Ollama como "hospital-assistant".
+  ollama-init:
+    image: ollama/ollama:0.40.14
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    volumes:
+      - ./models/gguf:/models/gguf:ro
+    entrypoint: ["ollama", "create", "hospital-assistant", "-f", "/models/gguf/Modelfile"]
+    depends_on:
+      gguf:
+        condition: service_completed_successfully
+      ollama:
+        condition: service_healthy
+    restart: "no"
+
+  app:
+    build: .
+    environment:
+      OLLAMA_BASE_URL: http://ollama:11434
+      MODEL_NAME: ${MODEL_NAME:-hospital-assistant}
+      OLLAMA_NUM_THREAD: ${OLLAMA_NUM_THREAD:-8}
+    ports:
+      - "7860:7860"
+    depends_on:
+      ollama-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+volumes:
+  ollama_data:
