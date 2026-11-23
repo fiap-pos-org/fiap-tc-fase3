@@ -141,7 +141,9 @@ function balaoAssistente(corpo) {
 
 function mensagemAssistente(r) {
   const corpo = el("div", { class: "card-body" });
-  if (r.categoria !== "clinica") {
+  if (r.categoria === "valores_criticos") {
+    corpo.append(el("span", { class: "badge bg-purple-lt mb-2" }, icone("calculator", "me-1"), "Calculado pela ferramenta de valores críticos (PROT-VCRIT-01), sem o modelo"));
+  } else if (r.categoria !== "clinica") {
     corpo.append(el("span", { class: "badge bg-orange-lt mb-2" }, icone("shield-lock", "me-1"), "Respondido pela trava de segurança, sem consultar o modelo"));
   } else if (r.substituida) {
     corpo.append(el("span", { class: "badge bg-orange-lt mb-2" }, icone("shield-x", "me-1"), "Resposta do modelo reprovada na validação e substituída"));

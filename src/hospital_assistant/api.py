@@ -45,6 +45,7 @@ ETAPAS = {
     "registrar_conduta": "Registrar conduta",
     "verificar_entrada": "Verificar entrada",
     "responder_bloqueio": "Responder pela trava de segurança",
+    "responder_ferramenta": "Responder pela ferramenta de valores críticos",
     "montar_contexto": "Montar contexto",
     "gerar_resposta": "Gerar resposta (modelo ajustado)",
     "validar_resposta": "Validar resposta",
