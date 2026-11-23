@@ -22,8 +22,13 @@
 </p>
 
 <p align="center">
-  <b><a href="https://aurora.williamdevops.com.br">Demonstração</a></b> ·
-  <b><a href="docs/relatorio.md">Relatório técnico</a></b> ·
+  <b>App online:</b> <a href="https://aurora.williamdevops.com.br">aurora.williamdevops.com.br</a><br>
+  usuário <code>admin</code> · senha <code>admin123</code>
+</p>
+
+<p align="center">
+  <b><a href="docs/relatorio.pdf">Relatório de entrega (PDF)</a></b> ·
+  <b>Vídeo (em breve)</b> ·
   <b><a href="https://huggingface.co/william-devops/hospital-assistant-gguf">Modelo no Hugging Face</a></b> ·
   <b><a href="desafio/">Enunciado</a></b>
 </p>
@@ -80,7 +85,7 @@ git clone https://github.com/fiap-pos-org/fiap-tc-fase3.git && cd fiap-tc-fase3
 docker compose up -d --build        # http://localhost:7860
 ```
 
-Para ativar o login, defina `APP_USUARIO` e `APP_SENHA` no serviço `app`. A demonstração online usa o usuário `admin` e a senha `admin123`.
+Para ativar o login, defina `APP_USUARIO` e `APP_SENHA` no serviço `app`. O app online usa o usuário `admin` e a senha `admin123`.
 
 <details>
 <summary><b>Reproduzir do zero: dados, treino, avaliação e testes</b></summary>
