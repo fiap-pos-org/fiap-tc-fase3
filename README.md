@@ -33,8 +33,13 @@ O enunciado completo está em [`desafio/`](desafio/).
 │   ├── prompts.py                # prompt de sistema e formato das mensagens (treino = inferência)
 │   ├── data/                     # pipeline de dados
 │   ├── finetune/                 # treino QLoRA e exportação para o Ollama
+│   ├── db/                       # banco do prontuário (SQLite)
+│   ├── rag/                      # busca semântica nos protocolos e avaliação da busca
+│   ├── assistant/                # monta o contexto (prontuário + trechos) e consulta o modelo
 │   └── app.py                    # interface web (Gradio)
-├── models/                       # adapter, modelo mesclado (gerados, fora do git)
+├── docs/avaliacao/               # métricas (treino, busca)
+├── models/                       # adapter, modelo mesclado e GGUF (gerados, fora do git)
+├── var/                          # banco e índice gerados em runtime (fora do git)
 ├── Dockerfile                    # imagem da app (só dependências de runtime)
 ├── docker-compose.yml            # ollama + importação do modelo + app
 └── tests/                        # testes automatizados
@@ -127,6 +132,24 @@ colab stop -s treino
 
 Resultado: loss de validação de 1,23 para 0,19 e acerto de tokens de 74% para 96%.
 
+## Prontuário e busca nos protocolos
+
+**Banco estruturado.** Os prontuários anonimizados são carregados num SQLite (`pacientes`, `exames`, `alergias`, `medicacoes`) na primeira execução. O assistente só lê o banco, com consultas parametrizadas: o modelo nunca escreve SQL. O prontuário lido do banco gera exatamente o mesmo texto de contexto usado no treino (há um teste para isso).
+
+**Busca semântica (RAG).** Cada seção de protocolo ou modelo vira um trecho com a referência usada nas citações (`PROT-SEPSE-01 §4`). Os embeddings vêm do [bge-m3](https://ollama.com/library/bge-m3), multilíngue, servido pelo próprio Ollama (a imagem da app não precisa de PyTorch). Com 85 trechos, um índice em memória basta; ele é salvo em `var/` e só é remontado quando os documentos mudam (montar leva ~40 s em CPU, carregar leva 0,1 s).
+
+Avaliação da busca com as 168 perguntas frequentes (fontes corretas conhecidas):
+
+| Estratégia | Fonte certa em 1º | Fonte certa entre os 3 |
+|---|---|---|
+| Busca semântica em todas as seções | 72,0% | 88,7% |
+| Híbrida (semântica + BM25) | 65,5% | 86,3% |
+| **Semântica sem a seção 1 (objetivo/indicação)** | **80,4%** | **91,7%** |
+
+A seção 1 de cada documento resume o tema todo e ocupava o 1º lugar sem conter a resposta, por isso ficou fora do índice. Reproduzir: `uv run python -m hospital_assistant.rag.avaliar` (gera `docs/avaliacao/busca.json`). As mesmas perguntas foram usadas para escolher a estratégia, então os números são otimistas para perguntas novas.
+
+**Contexto entregue ao modelo.** Sem paciente, vão os 3 trechos mais próximos da pergunta. Com paciente, vão o prontuário e 3 trechos intercalando duas buscas: só pela pergunta (encontra, por exemplo, a tabela de valores críticos) e pela pergunta mais o diagnóstico (encontra o protocolo do caso, para condutas).
+
 ## Aplicação (Docker)
 
 ```bash
@@ -138,8 +161,10 @@ Sobe quatro serviços:
 
 - `gguf`: converte `models/merged` para GGUF e quantiza em Q4_K_M com o [llama.cpp](https://github.com/ggml-org/llama.cpp) (só na primeira vez; o export apaga o GGUF antigo para forçar a reconversão);
 - `ollama`: serve o modelo em CPU, como num servidor sem GPU;
-- `ollama-init`: importa o GGUF no Ollama como `hospital-assistant` e encerra;
-- `app`: interface web em http://localhost:7860.
+- `ollama-init`: importa o GGUF no Ollama como `hospital-assistant`, baixa o `bge-m3` e encerra;
+- `app`: interface web em http://localhost:7860, com seletor de paciente, prontuário e trechos consultados. O banco e o índice ficam no volume `app_data`.
+
+O Ollama também fica acessível em `127.0.0.1:11434` (só na própria máquina), para rodar avaliações e scripts locais.
 
 A conversão para GGUF é feita antes porque o Ollama 0.40 importa safetensors só pelo motor MLX, que ainda não suporta a arquitetura Qwen2.
 
