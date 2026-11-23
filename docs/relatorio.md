@@ -87,7 +87,7 @@ Cada exemplo é uma conversa (sistema, usuário, assistente) no mesmo formato us
 Curadoria: deduplicação, limites de tamanho, validação de que toda fonte citada existe e nova varredura de dados pessoais. A divisão 80/10/10 é **por grupo** e estratificada por tipo: as variações de uma mesma pergunta e os exemplos de um mesmo paciente nunca ficam em splits diferentes, o que evita vazamento entre treino e teste.
 
 | Split | faq | protocolo | modelo | paciente | segurança | total |
-|---|---|---|---|---|---|---|
+|---|---:|---:|---:|---:|---:|---:|
 | Treino | 135 | 159 | 58 | 640 | 91 | 1.083 |
 | Validação | 18 | 21 | 8 | 80 | 11 | 138 |
 | Teste | 15 | 18 | 6 | 80 | 16 | 135 |
@@ -136,7 +136,7 @@ Os prontuários anonimizados ficam num SQLite (`pacientes`, `exames`, `alergias`
 Cada seção de documento vira um trecho indexado com embeddings **bge-m3** (multilíngue) servidos pelo Ollama. Avaliação com as 168 perguntas frequentes:
 
 | Estratégia | Fonte certa em 1º | Entre os 3 trechos |
-|---|---|---|
+|---|---:|---:|
 | Semântica em todas as seções | 72,0% | 88,7% |
 | Híbrida (semântica + BM25) | 65,5% | 86,3% |
 | **Semântica sem a seção 1** | **80,4%** | **91,7%** |
@@ -166,13 +166,13 @@ A seção 1 (objetivo/indicação) resume o documento todo e ocupava o 1º lugar
 
 Front-end próprio sobre o template Tabler, com tema claro e escuro e login. Telas: dúvida clínica (chat com seletor de paciente, fontes como etiquetas, trechos consultados), triagem automática (linha do tempo das etapas, alertas, sugestão e decisão do médico), pacientes (indicadores e prontuário) e auditoria (trilha de cada execução).
 
-![Pacientes: indicadores e prontuário com valores críticos em destaque](telas/tela-pacientes.png)
+![Dúvida clínica: chat com seletor de paciente, fontes e trechos consultados.](telas/tela-duvida.png)
 
-![Dúvida clínica: resposta com a fonte e os trechos de protocolo consultados](telas/tela-duvida.png)
+![Triagem automática: etapas do fluxo, alertas, sugestão e decisão do médico.](telas/tela-triagem.png)
 
-![Triagem: etapas do fluxo, alertas críticos, sugestão com fontes e decisão do médico](telas/tela-triagem.png)
+![Pacientes: indicadores e prontuário.](telas/tela-pacientes.png)
 
-![Auditoria: trilha de uma triagem, com os dados registrados em cada etapa](telas/tela-auditoria.png)
+![Auditoria: execuções recentes e trilha de cada execução.](telas/tela-auditoria.png)
 
 ## 7. Segurança e explicabilidade
 
@@ -201,7 +201,7 @@ O modelo original e as versões ajustadas rodam no mesmo Ollama, com a mesma qua
 ### 8.2 Resultados
 
 | Métrica | Original | Ajustado v1 | Ajustado v2 |
-|---|---|---|---|
+|---|---:|---:|---:|
 | ROUGE-L | 0,25 | 0,71 | **0,72** |
 | Similaridade semântica | 0,76 | 0,90 | **0,91** |
 | Fontes exatamente corretas | 2% | 56% | **62%** |
