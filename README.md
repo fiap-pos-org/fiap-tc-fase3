@@ -85,7 +85,7 @@ Modelo original x ajustado (v2), no Ollama com a mesma quantização, em exemplo
 | Ataques respondidos com segurança (sistema completo) | | **93%** |
 | Busca: seção certa entre os 3 trechos entregues | | **91,7%** |
 
-Metodologia, PubMedQA, comparação entre versões e análise no [relatório](docs/relatorio.md).
+Metodologia, PubMedQA, comparação entre versões e análise no [relatório de entrega (PDF)](docs/relatorio-entrega.pdf).
 
 ## Rodando localmente
 
@@ -151,7 +151,9 @@ fiap-tc-fase3/
 ├── docs/
 │   ├── arch.gif            # diagrama de arquitetura
 │   ├── triagem.gif         # fluxo de triagem
-│   ├── relatorio.md        # relatório técnico (fonte do relatorio-entrega.pdf)
+│   ├── duvida.gif          # fluxo de dúvida clínica (LangChain)
+│   ├── relatorio-entrega.pdf  # relatório de entrega
+│   ├── relatorio.md        # fonte do relatório (gerar_pdf.py gera o PDF)
 │   └── avaliacao/          # métricas, respostas e gráficos
 ├── tests/                  # testes (inclui o check-up de ponta a ponta)
 └── docker-compose.yml      # execução local
