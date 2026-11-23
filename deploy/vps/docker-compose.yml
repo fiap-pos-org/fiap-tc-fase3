@@ -21,7 +21,7 @@ services:
       - edge
     labels:
       - traefik.enable=true
-      - traefik.http.routers.assistente-medico.rule=Host(`assistente-medico.williamdevops.com.br`)
+      - traefik.http.routers.assistente-medico.rule=Host(`aurora.williamdevops.com.br`)
       - traefik.http.routers.assistente-medico.entrypoints=websecure
       - traefik.http.services.assistente-medico.loadbalancer.server.port=7860
     restart: unless-stopped
