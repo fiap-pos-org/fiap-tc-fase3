@@ -76,5 +76,6 @@ body { background: var(--fundo-pagina); }
 .col-paciente { white-space: nowrap; }
 .tabela-rolagem { max-height: calc(100vh - 22rem); overflow-y: auto; }
 .tabela-rolagem tbody tr { cursor: pointer; }
-.evento pre { font-size: .72rem; max-height: 22rem; overflow: auto; background: var(--tblr-bg-surface-secondary);
+/* O Tabler pinta <pre> com texto claro (para fundo escuro): aqui o fundo segue o tema, então o texto também. */
+.evento pre { color: var(--tblr-body-color); font-size: .72rem; max-height: 22rem; overflow: auto; background: var(--tblr-bg-surface-secondary);
   padding: .6rem; border-radius: .4rem; white-space: pre-wrap; }
