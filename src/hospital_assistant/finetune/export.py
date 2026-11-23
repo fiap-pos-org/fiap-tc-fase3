@@ -47,7 +47,7 @@ def modelfile() -> str:
         f'SYSTEM """{SYSTEM_PROMPT}"""\n'
         'PARAMETER stop "<|im_end|>"\n'
         'PARAMETER stop "<|im_start|>"\n'
-        "PARAMETER temperature 0.2\n"
+        "PARAMETER temperature 0\n"
         "PARAMETER num_ctx 4096\n"
     )
 

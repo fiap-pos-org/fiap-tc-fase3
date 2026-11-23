@@ -320,7 +320,7 @@ def main() -> None:
     logging.getLogger("httpx").setLevel(logging.WARNING)
     conn = inicializar()
     llm = ChatOllama(
-        model=MODEL_NAME, base_url=OLLAMA_BASE_URL, temperature=0.2, num_thread=OLLAMA_NUM_THREAD
+        model=MODEL_NAME, base_url=OLLAMA_BASE_URL, temperature=0, num_thread=OLLAMA_NUM_THREAD
     )
     checkpointer = SqliteSaver(
         sqlite3.connect(STORAGE_DIR / "checkpoints.db", check_same_thread=False)
