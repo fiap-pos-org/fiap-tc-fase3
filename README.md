@@ -39,7 +39,8 @@ O enunciado completo está em [`desafio/`](desafio/).
 │   ├── graph/                    # fluxos LangGraph (triagem e dúvida clínica) e diagramas
 │   ├── safety/                   # travas de entrada e validação das respostas
 │   ├── observability/            # trilha de auditoria por etapa (banco + log JSON)
-│   └── app.py                    # interface web (Gradio)
+│   ├── api.py                    # API web (FastAPI)
+│   └── static/                   # front-end (HTML + JS, template Tabler)
 ├── docs/avaliacao/               # métricas (treino, busca)
 ├── docs/diagramas/               # diagramas Mermaid gerados a partir dos grafos
 ├── models/                       # adapter, modelo mesclado e GGUF (gerados, fora do git)
@@ -207,7 +208,7 @@ No chat, a resposta só aparece depois de validada (sem streaming), para não ex
 
 Consultar:
 
-- na interface, aba **Auditoria** (lista de execuções e trilha de cada uma);
+- na interface, tela **Auditoria** (lista de execuções e trilha de cada uma; cada resposta do chat e cada triagem têm um link para a sua trilha);
 - por linha de comando: `uv run python -m hospital_assistant.observability.auditoria` (últimas execuções) ou `... auditoria <trace_id>` (trilha completa).
 
 ## Aplicação (Docker)
@@ -222,7 +223,16 @@ Sobe quatro serviços:
 - `gguf`: converte `models/merged` para GGUF e quantiza em Q4_K_M com o [llama.cpp](https://github.com/ggml-org/llama.cpp) (só na primeira vez; o export apaga o GGUF antigo para forçar a reconversão);
 - `ollama`: serve o modelo em CPU, como num servidor sem GPU;
 - `ollama-init`: importa o GGUF no Ollama como `hospital-assistant`, baixa o `bge-m3` e encerra;
-- `app`: interface web em http://localhost:7860, com três abas: **Dúvida clínica** (chat com seletor de paciente, prontuário e trechos consultados), **Triagem automática** (etapas do fluxo, alertas, sugestão e painel de aprovação do médico) e **Auditoria** (trilha de cada execução). Banco, índice e checkpoints dos fluxos ficam no volume `app_data`.
+- `app`: API FastAPI e front-end em http://localhost:7860. Banco, índice e checkpoints dos fluxos ficam no volume `app_data`.
+
+**Front-end.** Página única construída sobre o [Tabler](https://tabler.io) (template de painel administrativo, licença MIT, carregado por CDN em versão fixa), sem etapa de build. Telas:
+
+- **Dúvida clínica**: chat com seletor de paciente, prontuário resumido (valores críticos em destaque), fontes como etiquetas, trechos consultados e aviso quando a resposta veio da trava de segurança ou foi substituída pela validação;
+- **Triagem automática**: etapas do fluxo em linha do tempo, alertas críticos, pendências, sugestão com fontes e decisão do médico (nome e CRM obrigatórios);
+- **Pacientes**: lista filtrável com contagem de valores críticos e prontuário de cada paciente;
+- **Auditoria**: execuções recentes e trilha completa de cada uma.
+
+Todo texto vindo do modelo é inserido como texto (nunca como HTML). A API (`/api/...`) tem documentação automática em http://localhost:7860/docs.
 
 O Ollama também fica acessível em `127.0.0.1:11434` (só na própria máquina), para rodar avaliações e scripts locais.
 
