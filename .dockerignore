@@ -1,0 +1,11 @@
+.git
+.venv
+models
+logs
+data
+desafio
+tests
+**/__pycache__
+PLANO.md
+.env
+.env.*
