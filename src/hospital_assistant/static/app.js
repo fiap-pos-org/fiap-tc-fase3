@@ -134,6 +134,11 @@ async function selecionarPacienteDuvida() {
   try { destino.append(resumoProntuario(await api(`/api/pacientes/${id}`))); } catch (e) { avisoErro(destino, e.message); }
 }
 
+function balaoAssistente(corpo) {
+  return el("div", { class: "msg-assistente" },
+    el("span", { class: "avatar-assistente" }, icone("stethoscope")), el("div", { class: "card" }, corpo));
+}
+
 function mensagemAssistente(r) {
   const corpo = el("div", { class: "card-body" });
   if (r.categoria !== "clinica") {
@@ -146,7 +151,7 @@ function mensagemAssistente(r) {
   const trechos = blocoTrechos(r.trechos);
   if (trechos) corpo.append(trechos);
   corpo.append(el("div", { class: "mt-2 text-end" }, linkAuditoria(r.trace_id)));
-  return el("div", { class: "card msg-assistente" }, corpo);
+  return balaoAssistente(corpo);
 }
 
 async function enviarPergunta(ev) {
@@ -157,7 +162,7 @@ async function enviarPergunta(ev) {
   const chat = $("chat");
   $("chat-vazio")?.remove();
   chat.append(el("div", { class: "msg-usuario", text: pergunta }));
-  const aguarde = el("div", { class: "card msg-assistente" }, el("div", { class: "card-body text-secondary" },
+  const aguarde = balaoAssistente(el("div", { class: "card-body text-secondary" },
     el("span", { class: "spinner-border spinner-border-sm me-2" }), "Analisando a pergunta e consultando protocolos..."));
   chat.append(aguarde);
   chat.scrollTop = chat.scrollHeight;
@@ -255,6 +260,24 @@ async function decidir(aprovar) {
 }
 
 // ---------------------------------------------------------------- tela de pacientes
+function indicador(icon, cor, valor, rotulo) {
+  return el("div", { class: "col-sm-6 col-lg-3" }, el("div", { class: "card card-sm indicador" }, el("div", { class: "card-body" },
+    el("div", { class: "d-flex align-items-center gap-3" },
+      el("span", { class: `icone-indicador bg-${cor}-lt text-${cor}` }, icone(icon)),
+      el("div", {}, el("div", { class: "valor", text: String(valor) }), el("div", { class: "text-secondary small", text: rotulo }))))));
+}
+
+function renderIndicadores() {
+  const comCritico = PACIENTES.filter((p) => p.criticos > 0).length;
+  const pendentes = PACIENTES.reduce((soma, p) => soma + p.pendentes, 0);
+  const setores = new Set(PACIENTES.map((p) => p.setor)).size;
+  limpar($("indicadores")).append(
+    indicador("users", "azure", PACIENTES.length, "Pacientes internados"),
+    indicador("alert-triangle", "red", comCritico, "Com valor crítico"),
+    indicador("flask", "yellow", pendentes, "Exames pendentes"),
+    indicador("building-hospital", "green", setores, "Setores"));
+}
+
 function renderListaPacientes() {
   const filtro = $("pacientes-filtro").value.toLowerCase();
   const corpo = limpar($("pacientes-lista"));
@@ -310,6 +333,13 @@ async function abrirTrilha(traceId) {
   } catch (err) { avisoErro(destino, err.message); }
 }
 
+// ---------------------------------------------------------------- tema claro/escuro
+function alternarTema() {
+  const novo = document.documentElement.getAttribute("data-bs-theme") === "dark" ? "light" : "dark";
+  document.documentElement.setAttribute("data-bs-theme", novo);
+  try { localStorage.setItem("tema", novo); } catch (e) { /* preferência só desta visita */ }
+}
+
 // ---------------------------------------------------------------- início
 async function iniciar() {
   navegar();
@@ -321,6 +351,8 @@ async function iniciar() {
   preencherSeletor($("triagem-paciente"), false);
   renderExemplos();
   renderListaPacientes();
+  renderIndicadores();
+  $("tema").addEventListener("click", alternarTema);
   $("duvida-paciente").addEventListener("change", selecionarPacienteDuvida);
   $("duvida-form").addEventListener("submit", enviarPergunta);
   $("duvida-limpar").addEventListener("click", () => limpar($("chat")));
