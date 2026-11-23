@@ -20,6 +20,17 @@ def fmt_num(valor: float) -> str:
     return f"{valor:.2f}".rstrip("0").replace(".", ",")
 
 
+def fmt_limite_critico(codigo: str) -> str:
+    """Limite de valor crítico do exame (PROT-VCRIT-01 §2), ex.: '< 2,8 ou > 6,2'."""
+    e = EXAMES_LAB[codigo]
+    partes = []
+    if e.critico_abaixo is not None:
+        partes.append(f"< {fmt_num(e.critico_abaixo)}")
+    if e.critico_acima is not None:
+        partes.append(f"{'≥' if e.critico_acima_inclusivo else '>'} {fmt_num(e.critico_acima)}")
+    return " ou ".join(partes)
+
+
 def fmt_exame(exame: dict) -> str:
     if "valor" in exame:
         ref = EXAMES_LAB[exame["codigo"]].referencia

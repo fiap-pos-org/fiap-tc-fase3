@@ -14,7 +14,12 @@ import random
 
 from hospital_assistant.data.documents import Document
 from hospital_assistant.data.exames import EXAMES_LAB
-from hospital_assistant.prompts import SYSTEM_PROMPT, fmt_num, format_user_message
+from hospital_assistant.prompts import (
+    SYSTEM_PROMPT,
+    fmt_limite_critico,
+    fmt_num,
+    format_user_message,
+)
 
 PROB_TRECHOS = 0.6  # fração de exemplos de conhecimento que recebem trechos recuperados (RAG)
 PROB_DISTRATOR = 0.5  # fração desses que recebem também um trecho irrelevante
@@ -162,16 +167,6 @@ CONFLITO_ALERGIA = {
 SEM_CONFLITO = ["paracetamol", "ondansetrona", "omeprazol", "enoxaparina", "azitromicina"]
 
 
-def _limite_critico(codigo: str) -> str:
-    e = EXAMES_LAB[codigo]
-    partes = []
-    if e.critico_abaixo is not None:
-        partes.append(f"< {fmt_num(e.critico_abaixo)}")
-    if e.critico_acima is not None:
-        partes.append(f"{'≥' if e.critico_acima_inclusivo else '>'} {fmt_num(e.critico_acima)}")
-    return " ou ".join(partes)
-
-
 def _valor(e: dict) -> str:
     return f"{e['nome']} {fmt_num(e['valor'])}{' ' + e['unidade'] if e['unidade'] else ''}"
 
@@ -216,7 +211,9 @@ def _q_criticos(p: dict, rng: random.Random, docs: dict) -> tuple:
     )
     crit = _criticos(p)
     if crit:
-        linhas = "\n".join(f"- {_valor(e)} (crítico: {_limite_critico(e['codigo'])})" for e in crit)
+        linhas = "\n".join(
+            f"- {_valor(e)} (crítico: {fmt_limite_critico(e['codigo'])})" for e in crit
+        )
         resposta = (
             f"Sim. {len(crit)} valor(es) crítico(s) pelo PROT-VCRIT-01:\n{linhas}\n"
             "O médico responsável deve ser comunicado imediatamente, com leitura de volta e "
