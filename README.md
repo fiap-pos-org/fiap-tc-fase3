@@ -27,7 +27,7 @@
 </p>
 
 <p align="center">
-  <b><a href="docs/relatorio.pdf">Relatório de entrega (PDF)</a></b> ·
+  <b><a href="docs/relatorio-entrega.pdf">Relatório de entrega (PDF)</a></b> ·
   <b>Vídeo (em breve)</b> ·
   <b><a href="https://huggingface.co/william-devops/hospital-assistant-gguf">Modelo no Hugging Face</a></b> ·
   <b><a href="desafio/">Enunciado</a></b>
@@ -151,7 +151,7 @@ fiap-tc-fase3/
 ├── docs/
 │   ├── arch.gif            # diagrama de arquitetura
 │   ├── triagem.gif         # fluxo de triagem
-│   ├── relatorio.md        # relatório técnico
+│   ├── relatorio.md        # relatório técnico (fonte do relatorio-entrega.pdf)
 │   └── avaliacao/          # métricas, respostas e gráficos
 ├── tests/                  # testes (inclui o check-up de ponta a ponta)
 └── docker-compose.yml      # execução local
