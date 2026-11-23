@@ -5,6 +5,9 @@ from collections.abc import Iterator
 from dataclasses import dataclass, field
 
 from langchain_core.language_models import BaseChatModel
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import Runnable
 from langchain_core.vectorstores import InMemoryVectorStore
 
 from hospital_assistant.db.database import buscar_paciente
@@ -20,9 +23,14 @@ class Contexto:
     paciente: dict | None = None
     trechos: list[tuple[str, str]] = field(default_factory=list)
 
-    def mensagens(self) -> list[tuple[str, str]]:
-        user = format_user_message(self.pergunta, paciente=self.paciente, trechos=self.trechos)
-        return [("system", SYSTEM_PROMPT), ("human", user)]
+    def entrada(self) -> str:
+        return format_user_message(self.pergunta, paciente=self.paciente, trechos=self.trechos)
+
+
+def criar_cadeia(llm: BaseChatModel) -> Runnable:
+    """Cadeia LCEL: prompt (mesmo formato do treino) -> modelo ajustado -> texto."""
+    prompt = ChatPromptTemplate.from_messages([("system", SYSTEM_PROMPT), ("human", "{entrada}")])
+    return prompt | llm | StrOutputParser()
 
 
 def montar_contexto(
@@ -43,9 +51,9 @@ def montar_contexto(
     return Contexto(pergunta, paciente, trechos)
 
 
-def responder(contexto: Contexto, llm: BaseChatModel) -> Iterator[str]:
+def responder(contexto: Contexto, cadeia: Runnable) -> Iterator[str]:
     """Gera a resposta em streaming (texto acumulado)."""
     resposta = ""
-    for pedaco in llm.stream(contexto.mensagens()):
-        resposta += pedaco.content
+    for pedaco in cadeia.stream({"entrada": contexto.entrada()}):
+        resposta += pedaco
         yield resposta

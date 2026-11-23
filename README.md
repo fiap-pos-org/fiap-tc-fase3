@@ -35,9 +35,12 @@ O enunciado completo está em [`desafio/`](desafio/).
 │   ├── finetune/                 # treino QLoRA e exportação para o Ollama
 │   ├── db/                       # banco do prontuário (SQLite)
 │   ├── rag/                      # busca semântica nos protocolos e avaliação da busca
-│   ├── assistant/                # monta o contexto (prontuário + trechos) e consulta o modelo
+│   ├── assistant/                # ferramentas LangChain, cadeia LCEL e montagem do contexto
+│   ├── graph/                    # fluxos LangGraph (triagem e dúvida clínica) e diagramas
+│   ├── safety/                   # validação de segurança das respostas
 │   └── app.py                    # interface web (Gradio)
 ├── docs/avaliacao/               # métricas (treino, busca)
+├── docs/diagramas/               # diagramas Mermaid gerados a partir dos grafos
 ├── models/                       # adapter, modelo mesclado e GGUF (gerados, fora do git)
 ├── var/                          # banco e índice gerados em runtime (fora do git)
 ├── Dockerfile                    # imagem da app (só dependências de runtime)
@@ -150,6 +153,38 @@ A seção 1 de cada documento resume o tema todo e ocupava o 1º lugar sem conte
 
 **Contexto entregue ao modelo.** Sem paciente, vão os 3 trechos mais próximos da pergunta. Com paciente, vão o prontuário e 3 trechos intercalando duas buscas: só pela pergunta (encontra, por exemplo, a tabela de valores críticos) e pela pergunta mais o diagnóstico (encontra o protocolo do caso, para condutas).
 
+## Fluxos com LangChain e LangGraph
+
+**LangChain.** As consultas ao prontuário e aos protocolos são ferramentas LangChain (`assistant/ferramentas.py`: `consultar_prontuario`, `listar_exames_pendentes`, `verificar_valores_criticos`, `buscar_protocolos`), e a chamada ao modelo é uma cadeia LCEL (`prompt | modelo ajustado | parser`). As ferramentas são chamadas pelos nós em ordem fixa, não escolhidas pelo modelo: num fluxo clínico a sequência de verificações precisa ser garantida, e um modelo de 1,5B não faz tool-calling de forma confiável.
+
+**Fluxo A: triagem automatizada** (`graph/triagem.py`). Ao receber um paciente, verifica pendências e valores críticos, emite alertas, busca o protocolo, gera a sugestão, valida e **pausa até o médico decidir**:
+
+```mermaid
+flowchart TD
+    inicio([paciente]) --> carregar[carregar_prontuario]
+    carregar -->|não encontrado| fim([fim])
+    carregar --> pend[verificar_pendencias]
+    pend --> crit[checar_valores_criticos]
+    crit -->|há valor crítico| alertas[emitir_alertas]
+    crit -->|nenhum| busca[buscar_protocolos]
+    alertas --> busca
+    busca --> gerar[gerar_sugestao]
+    gerar --> validar[validar_seguranca]
+    validar -->|aprovada| humano{{aprovacao_humana: pausa}}
+    validar -->|reprovada| registrar[registrar_conduta]
+    humano -->|médico aprova ou rejeita| registrar
+    registrar --> fim
+```
+
+- Pendências e valores críticos são verificados **em código**, com os limites do `PROT-VCRIT-01 §2`. Na Fase 3 o modelo, sozinho, errava quais exames eram críticos.
+- Os alertas são gravados no banco (`alertas`), com o identificador da execução.
+- A sugestão reprovada na validação (fonte inexistente, conflito com alergia ou linguagem de prescrição com dose e via) não chega ao médico: é registrada como `bloqueada`.
+- A pausa usa `interrupt` do LangGraph com checkpoint em SQLite: a execução pendente sobrevive a um reinício da aplicação. A decisão (aprovada ou rejeitada, médico, comentário) é gravada em `condutas`. Nada é registrado como conduta antes dela.
+
+**Fluxo B: dúvida clínica** (`graph/duvida.py`): `montar_contexto` (prontuário opcional + trechos) -> `gerar_resposta` -> `validar_resposta`. Se a validação falhar, a interface mostra o aviso junto da resposta.
+
+Os diagramas gerados automaticamente pelo LangGraph estão em [`docs/diagramas/`](docs/diagramas/) (`uv run python -m hospital_assistant.graph.diagramas`).
+
 ## Aplicação (Docker)
 
 ```bash
@@ -162,7 +197,7 @@ Sobe quatro serviços:
 - `gguf`: converte `models/merged` para GGUF e quantiza em Q4_K_M com o [llama.cpp](https://github.com/ggml-org/llama.cpp) (só na primeira vez; o export apaga o GGUF antigo para forçar a reconversão);
 - `ollama`: serve o modelo em CPU, como num servidor sem GPU;
 - `ollama-init`: importa o GGUF no Ollama como `hospital-assistant`, baixa o `bge-m3` e encerra;
-- `app`: interface web em http://localhost:7860, com seletor de paciente, prontuário e trechos consultados. O banco e o índice ficam no volume `app_data`.
+- `app`: interface web em http://localhost:7860, com duas abas: **Dúvida clínica** (chat com seletor de paciente, prontuário e trechos consultados) e **Triagem automática** (etapas do fluxo, alertas, sugestão e painel de aprovação do médico). Banco, índice e checkpoints dos fluxos ficam no volume `app_data`.
 
 O Ollama também fica acessível em `127.0.0.1:11434` (só na própria máquina), para rodar avaliações e scripts locais.
 
