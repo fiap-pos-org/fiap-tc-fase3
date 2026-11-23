@@ -102,6 +102,9 @@ def _exame(e: dict) -> dict:
 
 
 COOKIE = "sessao"
+# A raiz entrega o login ou o sistema conforme a sessão: o navegador não pode guardar em cache,
+# senão reabre o sistema sem sessão, recebe 401 da API e entra em loop de recarga.
+SEM_CACHE = {"Cache-Control": "no-store"}
 DURACAO_SESSAO = 8 * 3600
 
 
@@ -300,8 +303,8 @@ def criar_app(
     @app.get("/", include_in_schema=False)
     def index(request: Request) -> FileResponse:
         if _usuario_da_sessao(request) is None:
-            return FileResponse(ESTATICOS / "login.html")
-        return FileResponse(ESTATICOS / "index.html")
+            return FileResponse(ESTATICOS / "login.html", headers=SEM_CACHE)
+        return FileResponse(ESTATICOS / "index.html", headers=SEM_CACHE)
 
     return app
 

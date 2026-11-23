@@ -100,6 +100,11 @@ def test_login_protege_a_api_e_a_pagina(cliente_com_login):
     assert c.get("/api/sessao").json() == {"login_ativo": True, "usuario": "medico"}
 
 
+def test_raiz_nao_vai_para_o_cache(cliente_com_login):
+    """Sem isso o navegador reabre o sistema do cache sem sessão e entra em loop de recarga."""
+    assert cliente_com_login.get("/").headers["cache-control"] == "no-store"
+
+
 def test_cookie_adulterado_nao_autentica(cliente_com_login):
     c = cliente_com_login
     c.post("/api/login", json={"usuario": "medico", "senha": "s3nha-forte"})
