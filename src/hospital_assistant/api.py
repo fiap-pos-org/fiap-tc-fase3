@@ -130,8 +130,13 @@ def criar_app(conn: sqlite3.Connection, indice, cadeia, checkpointer) -> FastAPI
         resultado = []
         for p in listar_pacientes(conn):
             completo = buscar_paciente(conn, p["id"])
+            exames = [_exame(e) for e in completo["exames"]]
             resultado.append(
-                {**p, "criticos": sum(_exame(e)["critico"] for e in completo["exames"])}
+                {
+                    **p,
+                    "criticos": sum(e["critico"] for e in exames),
+                    "pendentes": sum(e["status"] == "pendente" for e in exames),
+                }
             )
         return resultado
 
