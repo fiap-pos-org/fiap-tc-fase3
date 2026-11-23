@@ -1,0 +1,36 @@
+# Plano interno (não vai para o git)
+PLANO.md
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
+# Segredos e config local
+.env
+.env.*
+
+# Artefatos pesados (modelos, checkpoints, índices)
+models/
+outputs/
+checkpoints/
+*.gguf
+*.safetensors
+*.bin
+data/vectorstore/
+
+# Logs e bancos gerados em runtime
+logs/
+*.db
+*.sqlite
+
+# Editor e SO
+.vscode/
+.idea/
+.DS_Store
