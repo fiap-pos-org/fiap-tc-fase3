@@ -29,9 +29,14 @@ O enunciado completo está em [`desafio/`](desafio/).
 │       ├── ataques.jsonl         # 30 pedidos de prescrição, injeções, fora de escopo e sem base
 │       └── pubmedqa_200.jsonl    # amostra estratificada do PubMedQA
 ├── src/hospital_assistant/
-│   ├── config.py                 # caminhos centralizados
+│   ├── config.py                 # caminhos e serviços (variáveis de ambiente)
 │   ├── prompts.py                # prompt de sistema e formato das mensagens (treino = inferência)
-│   └── data/                     # pipeline de dados
+│   ├── data/                     # pipeline de dados
+│   ├── finetune/                 # treino QLoRA e exportação para o Ollama
+│   └── app.py                    # interface web (Gradio)
+├── models/                       # adapter, modelo mesclado (gerados, fora do git)
+├── Dockerfile                    # imagem da app (só dependências de runtime)
+├── docker-compose.yml            # ollama + importação do modelo + app
 └── tests/                        # testes automatizados
 ```
 
@@ -40,14 +45,18 @@ A estrutura cresce a cada fase (fine-tuning, RAG, grafos, segurança e avaliaç�
 ## Requisitos
 
 - [uv](https://docs.astral.sh/uv/) (instala o Python 3.12 automaticamente)
+- Docker com Docker Compose (para rodar a aplicação)
+- Para treinar: GPU NVIDIA com pelo menos 4 GB de VRAM e driver com CUDA 12 ou superior
 
 ## Como rodar
 
 ```bash
-uv sync            # cria o ambiente e instala as dependências
+uv sync            # cria o ambiente com todos os grupos (dados, treino, testes)
 uv run pytest      # roda os testes
 uv run ruff check  # lint
 ```
+
+As dependências são separadas em grupos: o runtime da aplicação fica em `dependencies`; `data` (Faker, spaCy), `train` (PyTorch, Transformers, PEFT, TRL) e `dev` (pytest, ruff) são instalados localmente, mas não entram na imagem Docker.
 
 ## Dados
 
@@ -75,6 +84,73 @@ O pipeline faz, em ordem:
 6. **Divisão** 80/10/10 por grupo e estratificada por tipo: variações da mesma pergunta e exemplos do mesmo paciente nunca ficam em splits diferentes.
 
 O PubMedQA ([licença MIT](https://github.com/pubmedqa/pubmedqa)) é usado só na avaliação e é mantido em inglês: é um benchmark padrão, então mantê-lo no original permite comparar com a literatura e medir se o fine-tuning degradou o conhecimento geral do modelo.
+
+## Fine-tuning
+
+Modelo base: [Qwen2.5-1.5B-Instruct](https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct), escolhido por ser bom em português e caber numa GPU de 4 GB. O ajuste usa **QLoRA**:
+
+- modelo base quantizado em 4 bits (NF4, dupla quantização) e congelado;
+- adaptadores LoRA (rank 16, alpha 32, dropout 0,05) em todas as camadas lineares (18,5 milhões de parâmetros treináveis, cerca de 1,2% do modelo);
+- loss calculada só sobre a resposta do assistente (formato prompt/completion);
+- lote efetivo 16, gradient checkpointing, otimizador AdamW paginado em 8 bits, bf16, taxa de aprendizado 2e-4 com cosseno e aquecimento de 5%;
+- contexto máximo de 1.024 tokens (o maior exemplo tem 954);
+- 2 épocas (132 passos), avaliação e checkpoint a cada 20 passos.
+
+```bash
+uv run python -m hospital_assistant.finetune.train --max-steps 20   # teste rápido de memória e tempo
+uv run python -m hospital_assistant.finetune.train                  # treino completo (models/adapter)
+uv run python -m hospital_assistant.finetune.train --resume         # retoma do último checkpoint
+uv run python -m hospital_assistant.finetune.export                 # mescla o adapter (models/merged)
+```
+
+O treino salva em `models/adapter/treino.json` a duração, o pico de VRAM e o histórico de loss. O histórico do treino oficial está em [`docs/avaliacao/treino.json`](docs/avaliacao/treino.json).
+
+### Onde o modelo foi treinado
+
+O script roda igual numa GPU local ou na nuvem. Numa RTX 3050 Ti de notebook (4 GB, limitada a ~20 W pelo firmware) o treino levaria mais de 2 horas; o treino oficial rodou numa **NVIDIA L4 do Google Colab** em **11 minutos** (pico de 2,1 GB de VRAM, lote 4 com acumulação 4), usando o [Colab CLI](https://github.com/googlecolab/google-colab-cli):
+
+```bash
+tar czf projeto.tgz src/hospital_assistant/__init__.py src/hospital_assistant/config.py \
+    src/hospital_assistant/finetune data/processed/train.jsonl data/processed/val.jsonl
+colab new -s treino --gpu L4
+colab upload -s treino projeto.tgz /content/projeto.tgz
+echo '!mkdir -p /content/proj && tar xzf /content/projeto.tgz -C /content/proj' | colab exec -s treino
+colab install -s treino transformers==5.24.0 peft==0.22.0 trl==1.18.2 bitsandbytes==0.50.2 accelerate==1.16.0 datasets==5.2.0
+colab restart-kernel -s treino
+printf '%s\n' '%%bash' 'cd /content/proj && mkdir -p models/adapter && PYTHONPATH=src nohup python -m hospital_assistant.finetune.train --batch 4 --grad-accum 4 > models/adapter/train.log 2>&1 &' | colab exec -s treino
+# ao terminar (aparece models/adapter/treino.json), baixar os arquivos do adapter:
+for f in adapter_config.json adapter_model.safetensors treino.json train.log; do
+  colab download -s treino /content/proj/models/adapter/$f models/adapter/$f
+done
+colab stop -s treino
+```
+
+Resultado: loss de validação de 1,23 para 0,19 e acerto de tokens de 74% para 96%.
+
+## Aplicação (Docker)
+
+```bash
+uv run python -m hospital_assistant.finetune.export   # depois de treinar: gera models/merged
+docker compose up -d --build
+```
+
+Sobe quatro serviços:
+
+- `gguf`: converte `models/merged` para GGUF e quantiza em Q4_K_M com o [llama.cpp](https://github.com/ggml-org/llama.cpp) (só na primeira vez; o export apaga o GGUF antigo para forçar a reconversão);
+- `ollama`: serve o modelo em CPU, como num servidor sem GPU;
+- `ollama-init`: importa o GGUF no Ollama como `hospital-assistant` e encerra;
+- `app`: interface web em http://localhost:7860.
+
+A conversão para GGUF é feita antes porque o Ollama 0.40 importa safetensors só pelo motor MLX, que ainda não suporta a arquitetura Qwen2.
+
+`OLLAMA_NUM_THREAD` (padrão 8) define quantas threads de CPU a inferência usa. Use o número de núcleos físicos da máquina: num notebook de 16 threads, o padrão do Ollama (todos os núcleos lógicos) gerou 3 tokens/s, contra 19 tokens/s com 8 threads.
+
+Para comparar com o modelo original, sem fine-tuning:
+
+```bash
+docker compose exec ollama ollama pull qwen2.5:1.5b-instruct
+MODEL_NAME=qwen2.5:1.5b-instruct docker compose up -d app
+```
 
 ## Status
 
