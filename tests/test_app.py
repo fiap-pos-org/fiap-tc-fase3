@@ -50,7 +50,7 @@ def test_duvida_separa_fontes_e_bloqueia_prescricao(cliente):
 def test_triagem_ate_a_decisao_e_auditoria(cliente):
     t = cliente.post("/api/triagem", json={"paciente_id": "PAC-0005"}).json()
     assert t["status"] == "aguardando" and t["alertas"] and t["registro"] is None
-    assert [e["id"] for e in t["etapas"]][0] == "carregar_prontuario"
+    assert [e["id"] for e in t["etapas"]][:2] == ["requisicao", "carregar_prontuario"]
     url = f"/api/triagem/{t['trace_id']}/decisao"
     assert cliente.post(url, json={"aprovar": True, "medico": "x"}).status_code == 422  # nome curto
     final = cliente.post(url, json={"aprovar": True, "medico": "Dra. Teste CRM 1"}).json()
@@ -74,3 +74,45 @@ def test_modelfile_usa_gguf_prompt_do_treino_e_stop_tokens():
     assert mf.startswith(f"FROM /models/gguf/{GGUF_NOME}")
     assert SYSTEM_PROMPT in mf
     assert 'PARAMETER stop "<|im_end|>"' in mf
+
+
+@pytest.fixture
+def cliente_com_login(tmp_path):
+    conn = conectar(tmp_path / "teste.db")
+    popular(conn, read_jsonl(PROCESSED_DIR / "prontuarios.jsonl"))
+    indice = criar_indice(DeterministicFakeEmbedding(size=64), path=None)
+    cadeia = criar_cadeia(FakeListChatModel(responses=[RESPOSTA] * 5))
+    app = criar_app(conn, indice, cadeia, InMemorySaver(), usuario="medico", senha="s3nha-forte")
+    return TestClient(app)
+
+
+def test_login_protege_a_api_e_a_pagina(cliente_com_login):
+    c = cliente_com_login
+    assert c.get("/api/pacientes").status_code == 401
+    assert "Acesso restrito" in c.get("/").text  # sem sessão, a raiz mostra o login
+    assert c.get("/api/info").status_code == 200  # informação pública
+    assert c.post("/api/login", json={"usuario": "medico", "senha": "errada"}).status_code == 401
+    assert (
+        c.post("/api/login", json={"usuario": "medico", "senha": "s3nha-forte"}).status_code == 200
+    )
+    assert c.get("/api/pacientes").status_code == 200
+    assert "Dúvida clínica" in c.get("/").text
+    assert c.get("/api/sessao").json() == {"login_ativo": True, "usuario": "medico"}
+
+
+def test_cookie_adulterado_nao_autentica(cliente_com_login):
+    c = cliente_com_login
+    c.post("/api/login", json={"usuario": "medico", "senha": "s3nha-forte"})
+    nome, expira, assinatura = c.cookies.get("sessao").split("|")
+    c.cookies.clear()
+    c.cookies.set("sessao", f"admin|{expira}|{assinatura}")
+    assert c.get("/api/pacientes").status_code == 401
+
+
+def test_auditoria_registra_quem_perguntou(cliente_com_login):
+    c = cliente_com_login
+    c.post("/api/login", json={"usuario": "medico", "senha": "s3nha-forte"})
+    r = c.post("/api/duvida", json={"pergunta": "Conduta?", "paciente_id": "PAC-0001"}).json()
+    primeira = c.get(f"/api/auditoria/{r['trace_id']}").json()[0]
+    assert primeira["etapa"] == "requisicao"
+    assert primeira["dados"] == {"usuario": "medico", "pergunta": "Conduta?"}

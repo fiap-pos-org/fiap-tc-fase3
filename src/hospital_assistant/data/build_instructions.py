@@ -201,14 +201,12 @@ def _q_pendentes(p: dict, rng: random.Random, docs: dict) -> tuple:
     return pergunta, None, resposta, ["PRONTUÁRIO: exames"]
 
 
-def _q_criticos(p: dict, rng: random.Random, docs: dict) -> tuple:
-    pergunta = rng.choice(
-        [
-            "Há algum valor crítico nos exames?",
-            "Algum resultado precisa ser comunicado com urgência?",
-            "Os exames deste paciente têm valor crítico?",
-        ]
-    )
+def resposta_valores_criticos(p: dict) -> tuple[str, list[str]]:
+    """Resposta sobre valores críticos calculada em código (PROT-VCRIT-01 §2).
+
+    Usada para gerar os exemplos de treino e, na aplicação, para responder essas perguntas
+    sem depender do modelo comparar números.
+    """
     crit = _criticos(p)
     if crit:
         linhas = "\n".join(
@@ -219,17 +217,27 @@ def _q_criticos(p: dict, rng: random.Random, docs: dict) -> tuple:
             "O médico responsável deve ser comunicado imediatamente, com leitura de volta e "
             "registro no prontuário. A conduta é decisão exclusiva do médico."
         )
-        refs = ["PRONTUÁRIO: exames", "PROT-VCRIT-01 §2", "PROT-VCRIT-01 §4"]
-    else:
-        alt = _alterados(p)
-        resposta = (
-            "Não. Nenhum resultado disponível atinge os limites de valor crítico do PROT-VCRIT-01."
+        return resposta, ["PRONTUÁRIO: exames", "PROT-VCRIT-01 §2", "PROT-VCRIT-01 §4"]
+    alt = _alterados(p)
+    resposta = (
+        "Não. Nenhum resultado disponível atinge os limites de valor crítico do PROT-VCRIT-01."
+    )
+    if alt:
+        resposta += (
+            " Fora da referência, sem ser crítico: " + "; ".join(_valor(e) for e in alt) + "."
         )
-        if alt:
-            resposta += (
-                " Fora da referência, sem ser crítico: " + "; ".join(_valor(e) for e in alt) + "."
-            )
-        refs = ["PRONTUÁRIO: exames", "PROT-VCRIT-01 §2"]
+    return resposta, ["PRONTUÁRIO: exames", "PROT-VCRIT-01 §2"]
+
+
+def _q_criticos(p: dict, rng: random.Random, docs: dict) -> tuple:
+    pergunta = rng.choice(
+        [
+            "Há algum valor crítico nos exames?",
+            "Algum resultado precisa ser comunicado com urgência?",
+            "Os exames deste paciente têm valor crítico?",
+        ]
+    )
+    resposta, refs = resposta_valores_criticos(p)
     trechos = [("PROT-VCRIT-01 §2", docs["PROT-VCRIT-01 §2"])]
     return pergunta, trechos, resposta, refs
 
@@ -389,6 +397,19 @@ SEM_BASE = [
     "Como manejar intoxicação por paracetamol segundo o hospital?",
     "Qual o protocolo de cuidados paliativos do hospital?",
     "Qual o protocolo de doença de Kawasaki?",
+    # v2: mais temas sem protocolo interno (diferentes dos usados em data/eval/ataques.jsonl).
+    "Qual o protocolo do hospital para dengue grave?",
+    "Como o hospital maneja a crise asmática grave?",
+    "Qual o protocolo de transfusão maciça?",
+    "Qual a conduta institucional na profilaxia antirrábica?",
+    "Qual o protocolo de anafilaxia do hospital?",
+    "Como conduzir uma crise convulsiva segundo o hospital?",
+    "Qual o protocolo de pancreatite aguda?",
+    "Qual a conduta institucional no delirium do idoso?",
+    "Qual o protocolo de hemorragia digestiva alta?",
+    "Como o hospital trata a intoxicação por organofosforados?",
+    "Qual o protocolo de sedação para intubação orotraqueal?",
+    "Qual o fluxo do hospital para doação de órgãos?",
 ]
 
 
@@ -408,7 +429,30 @@ def _resposta_recusa(droga: str, alta_vigilancia: bool) -> tuple[str, list[str]]
     return resposta, refs
 
 
-def build_seguranca(rng: random.Random) -> list[dict]:
+def _distratores(trechos: _Trechos, rng: random.Random, k: int = 3) -> list[tuple[str, str]]:
+    """Trechos irrelevantes, como os que a busca entrega para uma pergunta sem base."""
+    refs = [r for r in trechos.por_ref if not r.endswith("§1")]  # o §1 não é indexado
+    return [trechos.texto(r) for r in rng.sample(refs, k)]
+
+
+def _recusas_com_e_sem_trechos(
+    perguntas: list[str], prefixo: str, resposta: str, refs: list[str], trechos: _Trechos, rng
+) -> list[dict]:
+    """v2: cada pergunta vira dois exemplos, sem trechos e com 3 trechos irrelevantes. Na
+    aplicação a busca sempre entrega trechos; no treino v1 essas perguntas vinham sem nenhum,
+    e o modelo inventava respostas a partir dos trechos irrelevantes."""
+    exemplos = []
+    for i, pergunta in enumerate(perguntas):
+        grupo = f"SEG-{prefixo}-{i}"
+        exemplos.append(
+            _exemplo(grupo, grupo, "seguranca", format_user_message(pergunta), resposta, refs)
+        )
+        user = format_user_message(pergunta, trechos=_distratores(trechos, rng))
+        exemplos.append(_exemplo(f"{grupo}-trechos", grupo, "seguranca", user, resposta, refs))
+    return exemplos
+
+
+def build_seguranca(rng: random.Random, trechos: _Trechos) -> list[dict]:
     exemplos = []
     for t_idx, templates in enumerate((PEDIDOS_PRESCRICAO, INJECOES)):
         tipo_grupo = "prescricao" if t_idx == 0 else "injecao"
@@ -426,37 +470,25 @@ def build_seguranca(rng: random.Random) -> list[dict]:
                         refs,
                     )
                 )
-    for i, pergunta in enumerate(FORA_ESCOPO):
-        resposta = (
-            "Essa pergunta está fora do escopo clínico-assistencial do hospital. Posso ajudar "
-            "com protocolos internos, dados do prontuário e apoio a condutas clínicas."
-        )
-        exemplos.append(
-            _exemplo(
-                f"SEG-escopo-{i}",
-                f"SEG-escopo-{i}",
-                "seguranca",
-                format_user_message(pergunta),
-                resposta,
-                ["PROT-SEGMED-01 §6"],
-            )
-        )
-    for i, pergunta in enumerate(SEM_BASE):
-        resposta = (
-            "Não encontrei essa informação nos protocolos internos disponíveis, então não vou "
-            "responder por suposição. Recomendo consultar o especialista de plantão ou a "
-            "coordenação médica."
-        )
-        exemplos.append(
-            _exemplo(
-                f"SEG-sembase-{i}",
-                f"SEG-sembase-{i}",
-                "seguranca",
-                format_user_message(pergunta),
-                resposta,
-                ["PROT-SEGMED-01 §4"],
-            )
-        )
+    exemplos += _recusas_com_e_sem_trechos(
+        FORA_ESCOPO,
+        "escopo",
+        "Essa pergunta está fora do escopo clínico-assistencial do hospital. Posso ajudar "
+        "com protocolos internos, dados do prontuário e apoio a condutas clínicas.",
+        ["PROT-SEGMED-01 §6"],
+        trechos,
+        rng,
+    )
+    exemplos += _recusas_com_e_sem_trechos(
+        SEM_BASE,
+        "sembase",
+        "Não encontrei essa informação nos protocolos internos disponíveis, então não vou "
+        "responder por suposição. Recomendo consultar o especialista de plantão ou a "
+        "coordenação médica.",
+        ["PROT-SEGMED-01 §4"],
+        trechos,
+        rng,
+    )
     return exemplos
 
 
@@ -469,5 +501,5 @@ def build_all(
         *build_faq(faq, trechos),
         *build_documentos(docs, trechos),
         *build_pacientes(pacientes, trechos, rng),
-        *build_seguranca(rng),
+        *build_seguranca(rng, trechos),
     ]

@@ -100,3 +100,18 @@ def test_trilha_da_triagem_registra_todas_as_etapas_e_a_decisao(conn, indice):
     assert carga["paciente"] == "PAC-0005"  # o prontuário completo não é copiado no log
     assert all(e["duracao_ms"] >= 0 for e in eventos)
     assert listar_execucoes(conn)[0]["trace_id"] == "t1"
+
+
+def test_valores_criticos_do_paciente_vem_da_ferramenta_e_nao_do_modelo(conn, indice):
+    cadeia = criar_cadeia(FakeListChatModel(responses=[]))  # quebraria se o modelo fosse chamado
+    final = criar_fluxo_duvida(conn, indice, cadeia).invoke(
+        {
+            "pergunta": "Há algum valor crítico nos exames?",
+            "paciente_id": "PAC-0005",
+            "trace_id": "d3",
+        }
+    )
+    assert final["categoria"] == "valores_criticos"
+    assert "Glicose 575" in final["resposta"] and "pH arterial 7,1" in final["resposta"]
+    assert "Potássio" not in final["resposta"]  # o modelo errava marcando o potássio 4,0
+    assert final["resposta"].endswith("[PROT-VCRIT-01 §4]")

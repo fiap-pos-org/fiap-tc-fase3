@@ -6,28 +6,33 @@ Rotas:
 - POST /api/triagem                      fluxo A até a pausa de aprovação
 - POST /api/triagem/{trace_id}/decisao   decisão do médico (retoma o fluxo)
 - GET  /api/auditoria, /api/auditoria/{trace_id}
+- POST /api/login, /api/logout; GET /api/sessao   (login ativo se APP_USUARIO/APP_SENHA definidos)
 
 Uso: uv run python -m hospital_assistant.api (ou via docker compose)
 """
 
+import hashlib
+import hmac
 import logging
+import secrets
 import sqlite3
 import threading
+import time
 import uuid
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from langgraph.types import Command
 from pydantic import BaseModel, Field
 
-from hospital_assistant.config import MODEL_NAME
+from hospital_assistant.config import APP_SENHA, APP_USUARIO, MODEL_NAME
 from hospital_assistant.data.exames import EXAMES_LAB
 from hospital_assistant.db.database import buscar_paciente, listar_pacientes, listar_registros
 from hospital_assistant.graph.duvida import criar_fluxo_duvida
 from hospital_assistant.graph.triagem import criar_fluxo_triagem
-from hospital_assistant.observability.auditoria import listar_execucoes, trilha
+from hospital_assistant.observability.auditoria import listar_execucoes, registrar_evento, trilha
 from hospital_assistant.prompts import fmt_exame, fmt_limite_critico
 from hospital_assistant.safety.guardrails import fontes_citadas
 
@@ -45,10 +50,12 @@ ETAPAS = {
     "registrar_conduta": "Registrar conduta",
     "verificar_entrada": "Verificar entrada",
     "responder_bloqueio": "Responder pela trava de segurança",
+    "responder_ferramenta": "Responder pela ferramenta de valores críticos",
     "montar_contexto": "Montar contexto",
     "gerar_resposta": "Gerar resposta (modelo ajustado)",
     "validar_resposta": "Validar resposta",
     "resposta_segura": "Substituir por resposta segura",
+    "requisicao": "Requisição recebida",
 }
 
 
@@ -59,6 +66,11 @@ class PedidoDuvida(BaseModel):
 
 class PedidoTriagem(BaseModel):
     paciente_id: str
+
+
+class Credenciais(BaseModel):
+    usuario: str = Field(max_length=100)
+    senha: str = Field(max_length=200)
 
 
 class Decisao(BaseModel):
@@ -89,12 +101,87 @@ def _exame(e: dict) -> dict:
     }
 
 
-def criar_app(conn: sqlite3.Connection, indice, cadeia, checkpointer) -> FastAPI:
+COOKIE = "sessao"
+DURACAO_SESSAO = 8 * 3600
+
+
+def criar_app(
+    conn: sqlite3.Connection,
+    indice,
+    cadeia,
+    checkpointer,
+    usuario: str | None = APP_USUARIO,
+    senha: str | None = APP_SENHA,
+) -> FastAPI:
     fluxo_duvida = criar_fluxo_duvida(conn, indice, cadeia)
     fluxo_triagem = criar_fluxo_triagem(conn, indice, cadeia, checkpointer)
     # Um fluxo por vez: o modelo atende uma requisição por vez e o SQLite é compartilhado.
     trava = threading.Lock()
     app = FastAPI(title="Assistente Médico - Hospital Santa Aurora")
+
+    # ---- login: cookie assinado com HMAC (segredo novo a cada início = sessões expiram no restart)
+    login_ativo = bool(usuario and senha)
+    segredo = secrets.token_bytes(32)
+
+    def _assinar(nome: str, expira: int) -> str:
+        assinatura = hmac.new(segredo, f"{nome}|{expira}".encode(), hashlib.sha256).hexdigest()
+        return f"{nome}|{expira}|{assinatura}"
+
+    def _usuario_da_sessao(request: Request) -> str | None:
+        if not login_ativo:
+            return "local"
+        try:
+            nome, expira, assinatura = request.cookies.get(COOKIE, "").split("|")
+        except ValueError:
+            return None
+        esperado = _assinar(nome, int(expira)).rsplit("|", 1)[1]
+        if hmac.compare_digest(assinatura, esperado) and int(expira) > time.time():
+            return nome
+        return None
+
+    def usuario_atual(request: Request) -> str:
+        nome = _usuario_da_sessao(request)
+        if nome is None:
+            raise HTTPException(401, "Faça login para continuar")
+        return nome
+
+    def _registrar_requisicao(
+        trace_id: str, fluxo: str, nome: str, paciente_id, dados: dict
+    ) -> None:
+        """Registra quem pediu o quê (PROT-SEGMED-01 §6) antes de o fluxo rodar."""
+        registrar_evento(
+            conn, trace_id, fluxo, "requisicao", paciente_id, {"usuario": nome, **dados}, 0
+        )
+
+    @app.get("/api/sessao")
+    def sessao(request: Request) -> dict:
+        return {"login_ativo": login_ativo, "usuario": _usuario_da_sessao(request)}
+
+    @app.post("/api/login")
+    def login(credenciais: Credenciais, request: Request, response: Response) -> dict:
+        if not login_ativo:
+            return {"usuario": "local"}
+        ok = hmac.compare_digest(credenciais.usuario, usuario) & hmac.compare_digest(
+            credenciais.senha, senha
+        )
+        if not ok:
+            time.sleep(1)  # freia tentativas de força bruta
+            raise HTTPException(401, "Usuário ou senha inválidos")
+        https = request.headers.get("x-forwarded-proto", request.url.scheme) == "https"
+        response.set_cookie(
+            COOKIE,
+            _assinar(usuario, int(time.time()) + DURACAO_SESSAO),
+            max_age=DURACAO_SESSAO,
+            httponly=True,
+            samesite="lax",
+            secure=https,
+        )
+        return {"usuario": usuario}
+
+    @app.post("/api/logout")
+    def logout(response: Response) -> dict:
+        response.delete_cookie(COOKIE)
+        return {"ok": True}
 
     def _etapas(trace_id: str) -> list[dict]:
         return [
@@ -126,7 +213,7 @@ def criar_app(conn: sqlite3.Connection, indice, cadeia, checkpointer) -> FastAPI
         return {"modelo": MODEL_NAME}
 
     @app.get("/api/pacientes")
-    def pacientes() -> list[dict]:
+    def pacientes(_: str = Depends(usuario_atual)) -> list[dict]:
         resultado = []
         for p in listar_pacientes(conn):
             completo = buscar_paciente(conn, p["id"])
@@ -141,7 +228,7 @@ def criar_app(conn: sqlite3.Connection, indice, cadeia, checkpointer) -> FastAPI
         return resultado
 
     @app.get("/api/pacientes/{paciente_id}")
-    def paciente(paciente_id: str) -> dict:
+    def paciente(paciente_id: str, _: str = Depends(usuario_atual)) -> dict:
         p = buscar_paciente(conn, paciente_id)
         if p is None:
             raise HTTPException(404, "Paciente não encontrado")
@@ -151,8 +238,11 @@ def criar_app(conn: sqlite3.Connection, indice, cadeia, checkpointer) -> FastAPI
         }
 
     @app.post("/api/duvida")
-    def duvida(pedido: PedidoDuvida) -> dict:
+    def duvida(pedido: PedidoDuvida, nome: str = Depends(usuario_atual)) -> dict:
         trace_id = uuid.uuid4().hex[:12]
+        _registrar_requisicao(
+            trace_id, "duvida", nome, pedido.paciente_id, {"pergunta": pedido.pergunta}
+        )
         with trava:
             estado = fluxo_duvida.invoke(
                 {
@@ -173,10 +263,11 @@ def criar_app(conn: sqlite3.Connection, indice, cadeia, checkpointer) -> FastAPI
         }
 
     @app.post("/api/triagem")
-    def triagem(pedido: PedidoTriagem) -> dict:
+    def triagem(pedido: PedidoTriagem, nome: str = Depends(usuario_atual)) -> dict:
         if buscar_paciente(conn, pedido.paciente_id) is None:
             raise HTTPException(404, "Paciente não encontrado")
         trace_id = uuid.uuid4().hex[:12]
+        _registrar_requisicao(trace_id, "triagem", nome, pedido.paciente_id, {})
         with trava:
             fluxo_triagem.invoke(
                 {"paciente_id": pedido.paciente_id, "trace_id": trace_id},
@@ -185,20 +276,20 @@ def criar_app(conn: sqlite3.Connection, indice, cadeia, checkpointer) -> FastAPI
         return _triagem(trace_id)
 
     @app.post("/api/triagem/{trace_id}/decisao")
-    def decidir(trace_id: str, decisao: Decisao) -> dict:
+    def decidir(trace_id: str, decisao: Decisao, nome: str = Depends(usuario_atual)) -> dict:
         cfg = {"configurable": {"thread_id": trace_id}}
         if not fluxo_triagem.get_state(cfg).next:
             raise HTTPException(409, "Esta triagem não está aguardando decisão")
         with trava:
-            fluxo_triagem.invoke(Command(resume=decisao.model_dump()), cfg)
+            fluxo_triagem.invoke(Command(resume={**decisao.model_dump(), "usuario": nome}), cfg)
         return _triagem(trace_id)
 
     @app.get("/api/auditoria")
-    def auditoria() -> list[dict]:
+    def auditoria(_: str = Depends(usuario_atual)) -> list[dict]:
         return listar_execucoes(conn)
 
     @app.get("/api/auditoria/{trace_id}")
-    def auditoria_trilha(trace_id: str) -> list[dict]:
+    def auditoria_trilha(trace_id: str, _: str = Depends(usuario_atual)) -> list[dict]:
         eventos = trilha(conn, trace_id)
         if not eventos:
             raise HTTPException(404, "Execução não encontrada")
@@ -207,7 +298,9 @@ def criar_app(conn: sqlite3.Connection, indice, cadeia, checkpointer) -> FastAPI
     app.mount("/static", StaticFiles(directory=ESTATICOS), name="static")
 
     @app.get("/", include_in_schema=False)
-    def index() -> FileResponse:
+    def index(request: Request) -> FileResponse:
+        if _usuario_da_sessao(request) is None:
+            return FileResponse(ESTATICOS / "login.html")
         return FileResponse(ESTATICOS / "index.html")
 
     return app
