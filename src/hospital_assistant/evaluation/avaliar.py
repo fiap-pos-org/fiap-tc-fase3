@@ -165,7 +165,9 @@ def _media(valores: list[float]) -> float:
 def resumir() -> dict:
     resumo: dict = {"modelos": MODELOS, "temperatura": 0}
 
-    teste = read_jsonl(SAIDA / "respostas_teste.jsonl")
+    # Só os exemplos do conjunto de teste atual (respostas de versões antigas ficam no arquivo).
+    ids_teste = {ex["id"] for ex in read_jsonl(PROCESSED_DIR / "test.jsonl")}
+    teste = [r for r in read_jsonl(SAIDA / "respostas_teste.jsonl") if r["id"] in ids_teste]
     emb = OllamaEmbeddings(
         model=EMBEDDING_MODEL, base_url=OLLAMA_BASE_URL, num_thread=OLLAMA_NUM_THREAD
     )
