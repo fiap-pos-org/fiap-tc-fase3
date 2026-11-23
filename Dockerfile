@@ -13,6 +13,7 @@ COPY pyproject.toml uv.lock README.md ./
 RUN uv sync --frozen --no-default-groups --no-install-project
 
 COPY src ./src
+COPY data ./data
 RUN uv sync --frozen --no-default-groups
 
 EXPOSE 7860

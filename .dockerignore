@@ -2,10 +2,15 @@
 .venv
 models
 logs
-data
+var
 desafio
 tests
 **/__pycache__
 PLANO.md
 .env
 .env.*
+# Da pasta data, a app só precisa dos documentos internos e dos prontuários anonimizados.
+data/**
+!data/raw/protocolos/**
+!data/raw/modelos/**
+!data/processed/prontuarios.jsonl

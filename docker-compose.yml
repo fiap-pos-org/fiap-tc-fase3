@@ -19,6 +19,8 @@ services:
 
   ollama:
     image: ollama/ollama:0.40.14
+    ports:
+      - "127.0.0.1:11434:11434"  # só local, para desenvolvimento e avaliação
     volumes:
       - ollama_data:/root/.ollama
       - ./models/gguf:/models/gguf:ro
@@ -29,14 +31,14 @@ services:
       retries: 20
     restart: unless-stopped
 
-  # Importa o GGUF quantizado no Ollama como "hospital-assistant".
+  # Importa o GGUF quantizado no Ollama como "hospital-assistant" e baixa o modelo de embeddings.
   ollama-init:
     image: ollama/ollama:0.40.14
     environment:
       OLLAMA_HOST: http://ollama:11434
     volumes:
       - ./models/gguf:/models/gguf:ro
-    entrypoint: ["ollama", "create", "hospital-assistant", "-f", "/models/gguf/Modelfile"]
+    entrypoint: ["sh", "-c", "ollama create hospital-assistant -f /models/gguf/Modelfile && ollama pull bge-m3"]
     depends_on:
       gguf:
         condition: service_completed_successfully
@@ -50,6 +52,9 @@ services:
       OLLAMA_BASE_URL: http://ollama:11434
       MODEL_NAME: ${MODEL_NAME:-hospital-assistant}
       OLLAMA_NUM_THREAD: ${OLLAMA_NUM_THREAD:-8}
+      STORAGE_DIR: /app/var
+    volumes:
+      - app_data:/app/var  # banco do prontuário e índice de busca
     ports:
       - "7860:7860"
     depends_on:
@@ -59,3 +64,4 @@ services:
 
 volumes:
   ollama_data:
+  app_data:
