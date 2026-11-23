@@ -52,6 +52,8 @@ O médico acessa pelo navegador; o Traefik termina o HTTPS e encaminha para um c
 
 ## Fluxo de funcionamento
 
+### Triagem automatizada (LangGraph)
+
 <p align="center">
   <img src="docs/triagem.gif" alt="Fluxo de triagem: verificações em código, o modelo ajustado redige a sugestão, a validação barra respostas inseguras e nada vira conduta sem a aprovação do médico" />
 </p>
@@ -60,6 +62,16 @@ O médico acessa pelo navegador; o Traefik termina o HTTPS e encaminha para um c
 2. **Modelo ajustado**: busca o protocolo do caso e o modelo redige a sugestão, citando as fontes.
 3. **Validação**: reprova fonte inexistente ou fora dos trechos consultados, conflito com alergia e prescrição com dose e via; a sugestão reprovada é registrada como bloqueada.
 4. **Decisão humana**: o fluxo pausa (`interrupt` do LangGraph) até um médico identificado aprovar ou rejeitar; só então a conduta é registrada.
+
+### Dúvida clínica (LangChain + LangGraph)
+
+<p align="center">
+  <img src="docs/duvida.gif" alt="Fluxo de dúvida clínica: a trava de entrada recusa prescrição e injeção sem chamar o modelo, valores críticos vêm de uma ferramenta em código, a cadeia LangChain monta o contexto e o modelo ajustado redige, e a validação de saída só libera resposta com fontes" />
+</p>
+
+1. **Trava de entrada**: pedido de prescrição, injeção de prompt ou pergunta fora de escopo recebe a recusa padrão sem chamar o modelo; pergunta sobre valores críticos do paciente vai para uma ferramenta em código.
+2. **Cadeia LangChain**: as ferramentas (`@tool`) trazem o prontuário e os trechos dos protocolos (busca bge-m3); a cadeia LCEL (`ChatPromptTemplate` -> `ChatOllama` -> `StrOutputParser`) envia ao modelo ajustado.
+3. **Validação de saída**: só libera a resposta que cita fontes realmente consultadas e não conflita com alergias nem prescreve; a reprovada vira uma resposta segura e a original fica só na auditoria.
 
 ## Resultados
 

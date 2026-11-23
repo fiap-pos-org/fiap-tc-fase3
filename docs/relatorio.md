@@ -160,6 +160,8 @@ A seção 1 (objetivo/indicação) resume o documento todo e ocupava o 1º lugar
 
 **Fluxo B, dúvida clínica**: `verificar_entrada` -> (bloqueada) resposta padrão | (valores críticos do paciente) ferramenta | `montar_contexto` -> `gerar_resposta` -> `validar_resposta` -> (reprovada) resposta segura.
 
+![Fluxo de dúvida clínica (diagrama do fluxo LangChain): trava de entrada sem modelo, ferramenta de valores críticos, cadeia LCEL com o modelo ajustado e validação de saída](duvida-preview.png)
+
 ### 6.4 Interface
 
 Front-end próprio sobre o template Tabler, com tema claro e escuro e login. Telas: dúvida clínica (chat com seletor de paciente, fontes como etiquetas, trechos consultados), triagem automática (linha do tempo das etapas, alertas, sugestão e decisão do médico), pacientes (indicadores e prontuário) e auditoria (trilha de cada execução).
