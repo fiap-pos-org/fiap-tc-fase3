@@ -3,8 +3,10 @@
 #   1. baixar o modelo:  ./deploy/vps/baixar_modelo.sh
 #   2. criar deploy/vps/.env com APP_USUARIO e APP_SENHA (login obrigatório)
 # Subir: docker compose -f deploy/vps/docker-compose.yml up -d --build
+# (a imagem também pode ser construída antes, com docker build -f deploy/hf-space/Dockerfile -t assistente-medico .)
 services:
   app:
+    image: assistente-medico:latest
     build:
       context: ../..
       dockerfile: deploy/hf-space/Dockerfile
