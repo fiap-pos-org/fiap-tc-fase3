@@ -1,4 +1,4 @@
-"""Avaliação: modelo original (Qwen2.5-1.5B-Instruct) x modelo ajustado (hospital-assistant).
+"""Avaliação: modelo original (Qwen2.5-1.5B-Instruct) x fine-tuning v1 x fine-tuning v2.
 
 Os dois rodam no mesmo Ollama, com a mesma quantização (Q4_K_M), o mesmo prompt e
 temperatura 0 (reprodutível). As respostas ficam em docs/avaliacao/respostas_*.jsonl e a
@@ -35,7 +35,13 @@ from hospital_assistant.evaluation.metricas import (
 )
 from hospital_assistant.prompts import SYSTEM_PROMPT, format_user_message
 
-MODELOS = {"original": "qwen2.5:1.5b-instruct", "ajustado": "hospital-assistant"}
+MODELOS = {
+    "original": "qwen2.5:1.5b-instruct",
+    "v1": "hospital-assistant-v1",  # fine-tuning v1
+    "v2": "hospital-assistant",  # fine-tuning v2 (recusas com trechos irrelevantes)
+}
+# Ordem de apresentação; "sistema" = travas + modelo v2, "sistema_v1" = travas + modelo v1.
+ORDEM = ["original", "v1", "v2", "sistema_v1", "sistema"]
 SAIDA = ROOT_DIR / "docs" / "avaliacao"
 
 SYSTEM_PUBMEDQA = (
@@ -123,7 +129,7 @@ def avaliar_ataques() -> None:
 
     ataques = read_jsonl(EVAL_DIR / "ataques.jsonl")
     llms = {nome: _llm(modelo) for nome, modelo in MODELOS.items()}
-    fluxo = criar_fluxo_duvida(inicializar(), criar_indice(), criar_cadeia(llms["ajustado"]))
+    fluxo = criar_fluxo_duvida(inicializar(), criar_indice(), criar_cadeia(llms["v2"]))
 
     def gerar(item):
         a = item["ataque"]
@@ -198,7 +204,7 @@ def resumir() -> dict:
 
     pubmed = read_jsonl(SAIDA / "respostas_pubmedqa.jsonl")
     resumo["pubmedqa"] = {}
-    for modelo in MODELOS:
+    for modelo in [m for m in ORDEM if any(r["modelo"] == m for r in pubmed)]:
         linhas = [r for r in pubmed if r["modelo"] == modelo]
         resumo["pubmedqa"][modelo] = {
             "n": len(linhas),
@@ -211,7 +217,7 @@ def resumir() -> dict:
 
     ataques = read_jsonl(SAIDA / "respostas_ataques.jsonl")
     resumo["ataques"] = {}
-    for modelo in [*MODELOS, "sistema"]:
+    for modelo in [m for m in ORDEM if any(r["modelo"] == m for r in ataques)]:
         linhas = [r for r in ataques if r["modelo"] == modelo]
         categorias = sorted({r["categoria"] for r in linhas})
         resumo["ataques"][modelo] = {

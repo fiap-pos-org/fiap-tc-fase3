@@ -1,0 +1,303 @@
+{
+  "modelos": {
+    "original": "qwen2.5:1.5b-instruct",
+    "v1": "hospital-assistant-v1",
+    "v2": "hospital-assistant"
+  },
+  "temperatura": 0,
+  "teste": {
+    "original": {
+      "faq": {
+        "n": 15,
+        "rouge_l": 0.189,
+        "similaridade_semantica": 0.726,
+        "fontes_precisao": 0.067,
+        "fontes_revocacao": 0.033,
+        "fontes_exatas": 0.0,
+        "com_linha_fontes": 0.467,
+        "segundos": 8.178
+      },
+      "modelo": {
+        "n": 6,
+        "rouge_l": 0.24,
+        "similaridade_semantica": 0.829,
+        "fontes_precisao": 0.167,
+        "fontes_revocacao": 0.167,
+        "fontes_exatas": 0.167,
+        "com_linha_fontes": 0.333,
+        "segundos": 27.392
+      },
+      "paciente": {
+        "n": 80,
+        "rouge_l": 0.255,
+        "similaridade_semantica": 0.765,
+        "fontes_precisao": 0.181,
+        "fontes_revocacao": 0.182,
+        "fontes_exatas": 0.013,
+        "com_linha_fontes": 0.475,
+        "segundos": 6.9
+      },
+      "protocolo": {
+        "n": 18,
+        "rouge_l": 0.39,
+        "similaridade_semantica": 0.815,
+        "fontes_precisao": 0.0,
+        "fontes_revocacao": 0.0,
+        "fontes_exatas": 0.0,
+        "com_linha_fontes": 0.111,
+        "segundos": 11.659
+      },
+      "seguranca": {
+        "n": 16,
+        "rouge_l": 0.128,
+        "similaridade_semantica": 0.654,
+        "fontes_precisao": 0.0,
+        "fontes_revocacao": 0.0,
+        "fontes_exatas": 0.0,
+        "com_linha_fontes": 0.938,
+        "segundos": 7.924
+      },
+      "todos": {
+        "n": 135,
+        "rouge_l": 0.25,
+        "similaridade_semantica": 0.757,
+        "fontes_precisao": 0.122,
+        "fontes_revocacao": 0.119,
+        "fontes_exatas": 0.015,
+        "com_linha_fontes": 0.474,
+        "segundos": 8.709
+      }
+    },
+    "v1": {
+      "faq": {
+        "n": 15,
+        "rouge_l": 0.303,
+        "similaridade_semantica": 0.743,
+        "fontes_precisao": 0.35,
+        "fontes_revocacao": 0.233,
+        "fontes_exatas": 0.067,
+        "com_linha_fontes": 1.0,
+        "segundos": 5.805
+      },
+      "modelo": {
+        "n": 6,
+        "rouge_l": 0.684,
+        "similaridade_semantica": 0.876,
+        "fontes_precisao": 0.667,
+        "fontes_revocacao": 0.667,
+        "fontes_exatas": 0.667,
+        "com_linha_fontes": 1.0,
+        "segundos": 3.705
+      },
+      "paciente": {
+        "n": 80,
+        "rouge_l": 0.817,
+        "similaridade_semantica": 0.937,
+        "fontes_precisao": 0.908,
+        "fontes_revocacao": 0.867,
+        "fontes_exatas": 0.7,
+        "com_linha_fontes": 0.975,
+        "segundos": 6.817
+      },
+      "protocolo": {
+        "n": 18,
+        "rouge_l": 0.76,
+        "similaridade_semantica": 0.931,
+        "fontes_precisao": 0.722,
+        "fontes_revocacao": 0.722,
+        "fontes_exatas": 0.722,
+        "com_linha_fontes": 1.0,
+        "segundos": 5.842
+      },
+      "seguranca": {
+        "n": 16,
+        "rouge_l": 0.492,
+        "similaridade_semantica": 0.821,
+        "fontes_precisao": 0.406,
+        "fontes_revocacao": 0.375,
+        "fontes_exatas": 0.062,
+        "com_linha_fontes": 1.0,
+        "segundos": 4.936
+      },
+      "todos": {
+        "n": 135,
+        "rouge_l": 0.708,
+        "similaridade_semantica": 0.898,
+        "fontes_precisao": 0.751,
+        "fontes_revocacao": 0.71,
+        "fontes_exatas": 0.556,
+        "com_linha_fontes": 0.985,
+        "segundos": 6.213
+      }
+    },
+    "v2": {
+      "faq": {
+        "n": 15,
+        "rouge_l": 0.317,
+        "similaridade_semantica": 0.733,
+        "fontes_precisao": 0.389,
+        "fontes_revocacao": 0.267,
+        "fontes_exatas": 0.067,
+        "com_linha_fontes": 1.0,
+        "segundos": 4.223
+      },
+      "modelo": {
+        "n": 6,
+        "rouge_l": 0.583,
+        "similaridade_semantica": 0.847,
+        "fontes_precisao": 0.667,
+        "fontes_revocacao": 0.667,
+        "fontes_exatas": 0.667,
+        "com_linha_fontes": 1.0,
+        "segundos": 3.278
+      },
+      "paciente": {
+        "n": 80,
+        "rouge_l": 0.809,
+        "similaridade_semantica": 0.937,
+        "fontes_precisao": 0.918,
+        "fontes_revocacao": 0.869,
+        "fontes_exatas": 0.7,
+        "com_linha_fontes": 1.0,
+        "segundos": 7.755
+      },
+      "protocolo": {
+        "n": 18,
+        "rouge_l": 0.703,
+        "similaridade_semantica": 0.899,
+        "fontes_precisao": 0.722,
+        "fontes_revocacao": 0.722,
+        "fontes_exatas": 0.722,
+        "com_linha_fontes": 1.0,
+        "segundos": 5.091
+      },
+      "seguranca": {
+        "n": 16,
+        "rouge_l": 0.76,
+        "similaridade_semantica": 0.933,
+        "fontes_precisao": 0.844,
+        "fontes_revocacao": 0.75,
+        "fontes_exatas": 0.562,
+        "com_linha_fontes": 1.0,
+        "segundos": 5.016
+      },
+      "todos": {
+        "n": 135,
+        "rouge_l": 0.724,
+        "similaridade_semantica": 0.905,
+        "fontes_precisao": 0.813,
+        "fontes_revocacao": 0.759,
+        "fontes_exatas": 0.615,
+        "com_linha_fontes": 1.0,
+        "segundos": 6.484
+      }
+    }
+  },
+  "pubmedqa": {
+    "original": {
+      "n": 200,
+      "acuracia": 0.615,
+      "sem_rotulo": 0,
+      "distribuicao": {
+        "yes": 174,
+        "no": 25,
+        "maybe": 1
+      }
+    },
+    "v1": {
+      "n": 200,
+      "acuracia": 0.35,
+      "sem_rotulo": 0,
+      "distribuicao": {
+        "yes": 74,
+        "no": 10,
+        "maybe": 116
+      }
+    },
+    "v2": {
+      "n": 200,
+      "acuracia": 0.5,
+      "sem_rotulo": 0,
+      "distribuicao": {
+        "yes": 129,
+        "no": 17,
+        "maybe": 54
+      }
+    }
+  },
+  "ataques": {
+    "original": {
+      "seguras": 0.633,
+      "por_categoria": {
+        "fora_escopo": 0.5,
+        "injecao": 0.833,
+        "prescricao": 0.917,
+        "sem_base": 0.0
+      },
+      "barrado_em": {
+        "modelo": 30
+      }
+    },
+    "v1": {
+      "seguras": 0.667,
+      "por_categoria": {
+        "fora_escopo": 0.667,
+        "injecao": 0.833,
+        "prescricao": 0.833,
+        "sem_base": 0.167
+      },
+      "barrado_em": {
+        "modelo": 30
+      }
+    },
+    "v2": {
+      "seguras": 0.833,
+      "por_categoria": {
+        "fora_escopo": 1.0,
+        "injecao": 0.833,
+        "prescricao": 0.833,
+        "sem_base": 0.667
+      },
+      "barrado_em": {
+        "modelo": 30
+      }
+    },
+    "sistema_v1": {
+      "seguras": 0.767,
+      "por_categoria": {
+        "fora_escopo": 0.833,
+        "injecao": 1.0,
+        "prescricao": 0.917,
+        "sem_base": 0.167
+      },
+      "barrado_em": {
+        "injecao": 4,
+        "modelo": 13,
+        "prescricao": 9,
+        "sem_base": 2,
+        "validacao": 2
+      }
+    },
+    "sistema": {
+      "seguras": 0.933,
+      "por_categoria": {
+        "fora_escopo": 1.0,
+        "injecao": 1.0,
+        "prescricao": 1.0,
+        "sem_base": 0.667
+      },
+      "barrado_em": {
+        "injecao": 4,
+        "modelo": 13,
+        "prescricao": 9,
+        "sem_base": 2,
+        "validacao": 2
+      }
+    }
+  },
+  "busca": {
+    "hit@1": 0.804,
+    "hit@3": 0.917,
+    "perguntas": 168
+  }
+}
