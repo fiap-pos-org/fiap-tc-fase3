@@ -1,0 +1,33 @@
+---
+config:
+  flowchart:
+    curve: linear
+---
+graph TD;
+	__start__([<p>__start__</p>]):::first
+	carregar_prontuario(carregar_prontuario)
+	verificar_pendencias(verificar_pendencias)
+	checar_valores_criticos(checar_valores_criticos)
+	emitir_alertas(emitir_alertas)
+	buscar_protocolos(buscar_protocolos)
+	gerar_sugestao(gerar_sugestao)
+	validar_seguranca(validar_seguranca)
+	aprovacao_humana(aprovacao_humana)
+	registrar_conduta(registrar_conduta)
+	__end__([<p>__end__</p>]):::last
+	__start__ --> carregar_prontuario;
+	aprovacao_humana --> registrar_conduta;
+	buscar_protocolos --> gerar_sugestao;
+	carregar_prontuario -.-> __end__;
+	carregar_prontuario -.-> verificar_pendencias;
+	checar_valores_criticos -.-> buscar_protocolos;
+	checar_valores_criticos -.-> emitir_alertas;
+	emitir_alertas --> buscar_protocolos;
+	gerar_sugestao --> validar_seguranca;
+	validar_seguranca -.-> aprovacao_humana;
+	validar_seguranca -.-> registrar_conduta;
+	verificar_pendencias --> checar_valores_criticos;
+	registrar_conduta --> __end__;
+	classDef default fill:#f2f0ff,line-height:1.2
+	classDef first fill-opacity:0
+	classDef last fill:#bfb6fc

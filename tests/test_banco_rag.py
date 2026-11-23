@@ -2,7 +2,7 @@ import pytest
 from langchain_core.embeddings import DeterministicFakeEmbedding
 from langchain_core.language_models.fake_chat_models import FakeListChatModel
 
-from hospital_assistant.assistant.qa import montar_contexto, responder
+from hospital_assistant.assistant.qa import criar_cadeia, montar_contexto, responder
 from hospital_assistant.config import PROCESSED_DIR
 from hospital_assistant.data.documents import load_documents
 from hospital_assistant.data.generate_patients import read_jsonl
@@ -58,15 +58,14 @@ def test_contexto_com_paciente_inclui_prontuario_e_trechos(conn, indice):
     contexto = montar_contexto("Há valor crítico?", indice, conn, paciente_id="PAC-0001")
     assert contexto.paciente["id"] == "PAC-0001"
     assert len(contexto.trechos) == 3
-    sistema, usuario = contexto.mensagens()
-    assert sistema[0] == "system"
-    assert "[PRONTUÁRIO PAC-0001]" in usuario[1]
-    assert "Trechos de protocolos:" in usuario[1]
-    assert usuario[1].endswith("Pergunta: Há valor crítico?")
+    entrada = contexto.entrada()
+    assert "[PRONTUÁRIO PAC-0001]" in entrada
+    assert "Trechos de protocolos:" in entrada
+    assert entrada.endswith("Pergunta: Há valor crítico?")
 
 
 def test_responder_acumula_o_streaming(conn, indice):
     contexto = montar_contexto("Pergunta geral", indice, conn)
-    llm = FakeListChatModel(responses=["Resposta.\n\nFontes: [PROT-SEPSE-01 §4]"])
-    partes = list(responder(contexto, llm))
+    cadeia = criar_cadeia(FakeListChatModel(responses=["Resposta.\n\nFontes: [PROT-SEPSE-01 §4]"]))
+    partes = list(responder(contexto, cadeia))
     assert partes[-1] == "Resposta.\n\nFontes: [PROT-SEPSE-01 §4]"
