@@ -74,3 +74,8 @@ def buscar(indice: InMemoryVectorStore, pergunta: str, k: int = 3) -> list[tuple
     return [
         (t.metadata["ref"], t.metadata["texto"]) for t in indice.similarity_search(pergunta, k=k)
     ]
+
+
+def similaridade_maxima(indice: InMemoryVectorStore, pergunta: str) -> float:
+    """Similaridade (cosseno) entre a pergunta e o trecho mais próximo."""
+    return indice.similarity_search_with_score(pergunta, k=1)[0][1]

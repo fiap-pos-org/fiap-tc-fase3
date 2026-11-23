@@ -9,6 +9,8 @@ Uso: uv run python -m hospital_assistant.app (ou via docker compose)
 """
 
 import html
+import json
+import logging
 import sqlite3
 import uuid
 
@@ -32,6 +34,7 @@ from hospital_assistant.db.database import (
 )
 from hospital_assistant.graph.duvida import criar_fluxo_duvida
 from hospital_assistant.graph.triagem import criar_fluxo_triagem
+from hospital_assistant.observability.auditoria import listar_execucoes, trilha
 from hospital_assistant.prompts import format_patient_context
 from hospital_assistant.rag.indice import criar_indice
 
@@ -94,6 +97,10 @@ CSS = """
 .status.aprovada { background: rgba(21,128,61,.12); color: #15803d; }
 .status.rejeitada, .status.bloqueada { background: rgba(185,28,28,.12); color: #b91c1c; }
 .status.aguardando { background: rgba(180,83,9,.12); color: #b45309; }
+.execucao { font-size: .75rem; opacity: .6; font-family: monospace; }
+.evento { padding: 8px 12px; margin: 6px 0; border-radius: 6px;
+  border-left: 4px solid #1b6f7f; border: 1px solid var(--border-color-primary); }
+.evento .hora { font-family: monospace; font-size: .8rem; opacity: .7; }
 """
 
 TEMA = gr.themes.Soft(
@@ -107,11 +114,12 @@ SEM_PACIENTE = "Nenhum (pergunta geral)"
 
 
 def formatar(resposta: str) -> str:
-    """Destaca a linha de fontes num bloco próprio."""
+    """Escapa o texto do modelo (ex.: "pH < 7,30" não pode virar HTML) e destaca as fontes."""
     if "Fontes:" not in resposta:
-        return resposta
+        return html.escape(resposta)
     texto, fontes = resposta.rsplit("Fontes:", 1)
-    return f'{texto.strip()}\n\n<div class="fontes"><b>Fontes:</b> {fontes.strip()}</div>'
+    texto, fontes = html.escape(texto.strip()), html.escape(fontes.strip())
+    return f'{texto}\n\n<div class="fontes"><b>Fontes:</b> {fontes}</div>'
 
 
 def formatar_trechos(trechos: list[tuple[str, str]]) -> str:
@@ -173,17 +181,17 @@ def criar_interface(conn, indice, cadeia, checkpointer) -> gr.Blocks:
             "paciente_id": _paciente_id(opcao),
             "trace_id": uuid.uuid4().hex[:12],
         }
-        resposta, estado = "", {}
-        for modo, dado in fluxo_duvida.stream(entrada, stream_mode=["messages", "values"]):
-            if modo == "messages":
-                resposta += dado[0].content
-                yield "", historico + [{"role": "assistant", "content": resposta}], gr.skip()
-            else:
-                estado = dado
+        # A resposta só aparece depois de validada: mostrar o texto enquanto é gerado
+        # exporia conteúdo que a validação ainda pode reprovar.
+        aguarde = "<em>Analisando a pergunta e consultando protocolos...</em>"
+        yield "", historico + [{"role": "assistant", "content": aguarde}], gr.skip()
+        estado = fluxo_duvida.invoke(entrada)
         final = formatar(estado["resposta"])
-        if not estado["validacao"]["aprovada"]:
-            motivos = "; ".join(estado["validacao"]["motivos"])
-            final += f'\n\n<div class="aviso"><b>Atenção:</b> {motivos}</div>'
+        if estado["categoria"] != "clinica":
+            final += '\n\n<div class="aviso">Respondido pela trava de segurança, sem consultar o modelo.</div>'
+        elif not estado["validacao"]["aprovada"]:
+            final += '\n\n<div class="aviso">A resposta do modelo foi reprovada na validação e substituída.</div>'
+        final += f'\n\n<span class="execucao">Execução {entrada["trace_id"]}</span>'
         trechos = formatar_trechos(estado["trechos"])
         yield "", historico + [{"role": "assistant", "content": final}], trechos
 
@@ -212,7 +220,8 @@ def criar_interface(conn, indice, cadeia, checkpointer) -> gr.Blocks:
         status = "aguardando" if aguardando else snapshot.values["status"]
         yield (
             formatar_etapas(feitas, pausado=aguardando),
-            formatar_resultado(snapshot.values, status),
+            formatar_resultado(snapshot.values, status)
+            + f'\n\n<span class="execucao">Execução {thread}</span>',
             thread if aguardando else None,
             gr.update(visible=aguardando),
         )
@@ -237,6 +246,37 @@ def criar_interface(conn, indice, cadeia, checkpointer) -> gr.Blocks:
             None,
             gr.update(visible=False),
         )
+
+    # ------------------------------------------------------------ auditoria
+    def tabela_execucoes():
+        return [
+            [
+                e["inicio"].replace("T", " ")[:19],
+                e["trace_id"],
+                e["fluxo"],
+                e["paciente_id"] or "-",
+                e["etapas"],
+            ]
+            for e in listar_execucoes(conn)
+        ]
+
+    def mostrar_trilha(trace_id: str) -> str:
+        eventos = trilha(conn, trace_id.strip())
+        if not eventos:
+            return "Execução não encontrada."
+        blocos = []
+        for e in eventos:
+            dados = html.escape(json.dumps(e["dados"], ensure_ascii=False, indent=2))
+            blocos.append(
+                f'<div class="evento"><span class="hora">{e["criado_em"][11:23]}</span> '
+                f"<b>{html.escape(e['etapa'])}</b> ({e['duracao_ms']} ms)"
+                f"<details><summary>dados</summary><pre>{dados}</pre></details></div>"
+            )
+        return "".join(blocos)
+
+    def selecionar_execucao(evt: gr.SelectData, tabela):
+        trace_id = tabela.iloc[evt.index[0], 1]
+        return trace_id, mostrar_trilha(trace_id)
 
     with gr.Blocks(title="Assistente Médico | Hospital Santa Aurora") as demo:
         gr.HTML(
@@ -279,6 +319,20 @@ def criar_interface(conn, indice, cadeia, checkpointer) -> gr.Blocks:
                             with gr.Row():
                                 aprovar = gr.Button("Aprovar sugestão", variant="primary")
                                 rejeitar = gr.Button("Rejeitar sugestão", variant="stop")
+                    with gr.Tab("Auditoria") as aba_auditoria:
+                        gr.Markdown(
+                            "Trilha de cada execução dos fluxos: entradas e saídas de cada etapa, "
+                            "texto enviado ao modelo, fontes, validação e decisão do médico."
+                        )
+                        execucoes = gr.Dataframe(
+                            headers=["Início", "Execução", "Fluxo", "Paciente", "Etapas"],
+                            interactive=False,
+                            wrap=True,
+                        )
+                        with gr.Row():
+                            trace_busca = gr.Textbox(label="Execução (trace_id)", scale=4)
+                            botao_trilha = gr.Button("Ver trilha", scale=1)
+                        trilha_html = gr.HTML()
             with gr.Column(scale=2, elem_classes="painel"):
                 with gr.Accordion("Prontuário do paciente", open=True):
                     resumo = gr.Markdown(mostrar_paciente(SEM_PACIENTE))
@@ -303,6 +357,10 @@ def criar_interface(conn, indice, cadeia, checkpointer) -> gr.Blocks:
         limpar.click(lambda: [], None, chat)
         for botao, exemplo in botoes:
             botao.click(lambda e=exemplo: e, None, entrada)
+        aba_auditoria.select(tabela_execucoes, None, execucoes)
+        execucoes.select(selecionar_execucao, execucoes, [trace_busca, trilha_html])
+        botao_trilha.click(mostrar_trilha, trace_busca, trilha_html)
+        trace_busca.submit(mostrar_trilha, trace_busca, trilha_html)
         saidas_triagem = [etapas, resultado, thread, painel_decisao]
         botao_triagem.click(executar_triagem, paciente, saidas_triagem)
         aprovar.click(
@@ -315,6 +373,8 @@ def criar_interface(conn, indice, cadeia, checkpointer) -> gr.Blocks:
 
 
 def main() -> None:
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
+    logging.getLogger("httpx").setLevel(logging.WARNING)  # sem ruído de cada chamada HTTP
     conn = inicializar()
     indice = criar_indice()
     llm = ChatOllama(
