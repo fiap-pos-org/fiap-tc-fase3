@@ -152,7 +152,10 @@ fiap-tc-fase3/
       <sub>RM 374810</sub>
     </td>
     <td align="center">
-      <sub><b>Nicolas Gomes</b></sub><br>
+      <a href="https://github.com/pwnkcin">
+        <img src="https://github.com/pwnkcin.png" width="100px;" alt="Nicolas Gomes"/><br>
+        <sub><b>Nicolas Gomes</b></sub>
+      </a><br>
       <sub>RM 374793</sub>
     </td>
   </tr>
