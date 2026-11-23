@@ -37,7 +37,8 @@ O enunciado completo está em [`desafio/`](desafio/).
 │   ├── rag/                      # busca semântica nos protocolos e avaliação da busca
 │   ├── assistant/                # ferramentas LangChain, cadeia LCEL e montagem do contexto
 │   ├── graph/                    # fluxos LangGraph (triagem e dúvida clínica) e diagramas
-│   ├── safety/                   # validação de segurança das respostas
+│   ├── safety/                   # travas de entrada e validação das respostas
+│   ├── observability/            # trilha de auditoria por etapa (banco + log JSON)
 │   └── app.py                    # interface web (Gradio)
 ├── docs/avaliacao/               # métricas (treino, busca)
 ├── docs/diagramas/               # diagramas Mermaid gerados a partir dos grafos
@@ -181,9 +182,33 @@ flowchart TD
 - A sugestão reprovada na validação (fonte inexistente, conflito com alergia ou linguagem de prescrição com dose e via) não chega ao médico: é registrada como `bloqueada`.
 - A pausa usa `interrupt` do LangGraph com checkpoint em SQLite: a execução pendente sobrevive a um reinício da aplicação. A decisão (aprovada ou rejeitada, médico, comentário) é gravada em `condutas`. Nada é registrado como conduta antes dela.
 
-**Fluxo B: dúvida clínica** (`graph/duvida.py`): `montar_contexto` (prontuário opcional + trechos) -> `gerar_resposta` -> `validar_resposta`. Se a validação falhar, a interface mostra o aviso junto da resposta.
+**Fluxo B: dúvida clínica** (`graph/duvida.py`): `verificar_entrada` -> (bloqueada) `responder_bloqueio`, ou `montar_contexto` (prontuário opcional + trechos) -> `gerar_resposta` -> `validar_resposta` -> (reprovada) `resposta_segura`.
 
 Os diagramas gerados automaticamente pelo LangGraph estão em [`docs/diagramas/`](docs/diagramas/) (`uv run python -m hospital_assistant.graph.diagramas`).
+
+## Segurança e auditoria
+
+O assistente segue o `PROT-SEGMED-01` (limites de atuação do assistente virtual) com defesa em camadas:
+
+| Camada | Onde | O que faz |
+|---|---|---|
+| Trava de entrada | `safety/entrada.py` | Pedido de prescrição (verbo de ação + alvo, ex.: "prescreva", "libera ... na bomba") e tentativa de burlar regras ("ignore", "sem validação", "você agora é") recebem a recusa padrão **sem chamar o modelo**. Pergunta geral muito distante de qualquer protocolo (similaridade < 0,42) recebe "não encontrei". |
+| Modelo ajustado | fine-tuning | Treinado com exemplos de recusa, fora de escopo e "sem base". |
+| Validação de saída | `safety/guardrails.py` | Reprova resposta sem fonte, com fonte inexistente, com fonte **fora dos trechos entregues ao modelo** (fundamentação), com conflito de alergia ou com prescrição (dose + via). Resposta reprovada não é mostrada: vira uma resposta segura, e a original fica na auditoria. |
+| Valores críticos em código | `assistant/ferramentas.py` | O modelo não decide o que é crítico: os limites do `PROT-VCRIT-01 §2` são aplicados em código. |
+| Protocolo do caso | `graph/triagem.py` | Na triagem, a conduta vem do protocolo registrado no prontuário, não do que a busca "achar". |
+| Aprovação humana | `graph/triagem.py` | Nenhuma sugestão vale como conduta sem a decisão de um médico identificado. |
+
+Calibração do limiar de "sem base" (com perguntas do treino, não do conjunto de avaliação): 0,42 bloqueia 1,2% das perguntas legítimas e pega 7 de 22 perguntas sem base; é conservador de propósito, porque as camadas seguintes cobrem o resto. A trava de entrada não teve nenhum falso positivo nas 168 perguntas frequentes e barrou os 100 pedidos de prescrição e injeções do treino.
+
+No chat, a resposta só aparece depois de validada (sem streaming), para não exibir um texto que a validação ainda pode reprovar.
+
+**Auditoria.** Cada etapa dos dois fluxos gera um evento com o `trace_id` da execução: dados produzidos pela etapa, texto exato enviado ao modelo, resposta original, versão do modelo, trechos e fontes, resultado da validação, decisão do médico (nome, aprovação, comentário) e duração. Os eventos ficam na tabela `auditoria` e também saem em JSON no log da aplicação (`docker compose logs app`). O prontuário completo não é copiado para o log, só o id do paciente.
+
+Consultar:
+
+- na interface, aba **Auditoria** (lista de execuções e trilha de cada uma);
+- por linha de comando: `uv run python -m hospital_assistant.observability.auditoria` (últimas execuções) ou `... auditoria <trace_id>` (trilha completa).
 
 ## Aplicação (Docker)
 
@@ -197,7 +222,7 @@ Sobe quatro serviços:
 - `gguf`: converte `models/merged` para GGUF e quantiza em Q4_K_M com o [llama.cpp](https://github.com/ggml-org/llama.cpp) (só na primeira vez; o export apaga o GGUF antigo para forçar a reconversão);
 - `ollama`: serve o modelo em CPU, como num servidor sem GPU;
 - `ollama-init`: importa o GGUF no Ollama como `hospital-assistant`, baixa o `bge-m3` e encerra;
-- `app`: interface web em http://localhost:7860, com duas abas: **Dúvida clínica** (chat com seletor de paciente, prontuário e trechos consultados) e **Triagem automática** (etapas do fluxo, alertas, sugestão e painel de aprovação do médico). Banco, índice e checkpoints dos fluxos ficam no volume `app_data`.
+- `app`: interface web em http://localhost:7860, com três abas: **Dúvida clínica** (chat com seletor de paciente, prontuário e trechos consultados), **Triagem automática** (etapas do fluxo, alertas, sugestão e painel de aprovação do médico) e **Auditoria** (trilha de cada execução). Banco, índice e checkpoints dos fluxos ficam no volume `app_data`.
 
 O Ollama também fica acessível em `127.0.0.1:11434` (só na própria máquina), para rodar avaliações e scripts locais.
 

@@ -5,14 +5,22 @@ config:
 ---
 graph TD;
 	__start__([<p>__start__</p>]):::first
+	verificar_entrada(verificar_entrada)
+	responder_bloqueio(responder_bloqueio)
 	montar_contexto(montar_contexto)
 	gerar_resposta(gerar_resposta)
 	validar_resposta(validar_resposta)
+	resposta_segura(resposta_segura)
 	__end__([<p>__end__</p>]):::last
-	__start__ --> montar_contexto;
+	__start__ --> verificar_entrada;
 	gerar_resposta --> validar_resposta;
 	montar_contexto --> gerar_resposta;
-	validar_resposta --> __end__;
+	validar_resposta -.-> __end__;
+	validar_resposta -.-> resposta_segura;
+	verificar_entrada -.-> montar_contexto;
+	verificar_entrada -.-> responder_bloqueio;
+	responder_bloqueio --> __end__;
+	resposta_segura --> __end__;
 	classDef default fill:#f2f0ff,line-height:1.2
 	classDef first fill-opacity:0
 	classDef last fill:#bfb6fc
