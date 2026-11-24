@@ -7,7 +7,7 @@
 - Repositório: https://github.com/fiap-pos-org/fiap-tc-fase3
 - App online: https://aurora.williamdevops.com.br (usuário `admin`, senha `admin123`)
 - Modelo ajustado: https://huggingface.co/william-devops/hospital-assistant-gguf
-- Vídeo: link no README do repositório
+- Vídeo de demonstração: https://youtu.be/k6BM5NtAoY0
 
 ## 1. Resumo
 
