@@ -75,6 +75,7 @@ CAPA = """
     <b>Repositório</b><a href="https://github.com/fiap-pos-org/fiap-tc-fase3">github.com/fiap-pos-org/fiap-tc-fase3</a>
     <b>App online</b><span><a href="https://aurora.williamdevops.com.br">aurora.williamdevops.com.br</a> (usuário <b>admin</b>, senha <b>admin123</b>)</span>
     <b>Modelo</b><a href="https://huggingface.co/william-devops/hospital-assistant-gguf">huggingface.co/william-devops/hospital-assistant-gguf</a>
+    <b>Vídeo</b><a href="https://youtu.be/k6BM5NtAoY0">youtu.be/k6BM5NtAoY0</a>
   </div>
 </div>
 """

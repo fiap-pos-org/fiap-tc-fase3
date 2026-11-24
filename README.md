@@ -28,7 +28,7 @@
 
 <p align="center">
   <b><a href="docs/relatorio-entrega.pdf">Relatório de entrega (PDF)</a></b> ·
-  <b>Vídeo (em breve)</b> ·
+  <b><a href="https://youtu.be/k6BM5NtAoY0">Vídeo de demonstração</a></b> ·
   <b><a href="https://huggingface.co/william-devops/hospital-assistant-gguf">Modelo no Hugging Face</a></b> ·
   <b><a href="desafio/">Enunciado</a></b>
 </p>
